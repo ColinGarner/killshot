@@ -37,6 +37,7 @@ GAME_WINDOW_AFTER = 4          # hours after tip-off (covers overtime and a slow
 PLAYS_RETRY_MINUTES = [5, 10, 20, 40, 60]   # waits after each empty plays answer; then 60 forever
 MAX_PLAYS_CHECKS = 48          # about two days of hourly tries, then give up and flag it
 SLOW_DOWN_AT = 0.9             # share of the monthly limit where polling slows down
+MAX_SLEEP = 15 * 60            # longest wait between passes, so the heartbeat stays fresh
 
 
 @dataclass
@@ -136,7 +137,9 @@ def run_once(conn, client: cbbd.Client, settings: Settings, today: dt.date) -> f
     wait = sync_every if synced else max(sync_every - (since or 0), 0)
     if db.games_needing_plays(conn, MAX_PLAYS_CHECKS) or any("no plays yet" in n for n in notes):
         wait = min(wait, PLAYS_RETRY_MINUTES[0] * 60 * stretch)
-    return max(wait, 60)
+    # Never sleep longer than 15 minutes, so the heartbeat stays fresh for the
+    # health check. Waking up costs no API calls unless something is due.
+    return min(max(wait, 60), MAX_SLEEP)
 
 
 def main() -> None:
