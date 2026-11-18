@@ -14,6 +14,7 @@ export function Layout() {
       </header>
       <nav className="mx-auto flex max-w-3xl gap-1 border-b-2 border-slate-200 px-4 dark:border-slate-800" aria-label="Sections">
         <Tab to="/games">Game log</Tab>
+        <Tab to="/season">Season</Tab>
       </nav>
       <main className="mx-auto max-w-3xl px-4 py-6">
         <Outlet />

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { GameSummary } from "../api/client";
 import { useGames, useTeam } from "../api/queries";
@@ -9,7 +10,8 @@ const SEASONS = [currentSeason(), currentSeason() - 1];
 /** The season's schedule and results. Tap a played game for its lineups and chart. */
 export function GamesPage() {
   const [params, setParams] = useSearchParams();
-  const season = Number(params.get("season")) || SEASONS[0];
+  // Own state so the picker changes instantly; the URL follows in the background.
+  const [season, setSeason] = useState(Number(params.get("season")) || SEASONS[0]);
   const team = useTeam();
   const games = useGames(team.data?.id, season);
 
@@ -22,7 +24,10 @@ export function GamesPage() {
           <select
             id="season"
             value={season}
-            onChange={(e) => setParams({ season: e.target.value })}
+            onChange={(e) => {
+              setSeason(Number(e.target.value));
+              setParams({ season: e.target.value }, { replace: true });
+            }}
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           >
             {SEASONS.map((s) => (

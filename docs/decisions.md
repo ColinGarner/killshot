@@ -222,3 +222,13 @@ TypeScript 7 no longer has. `npm run gen:api` runs it in its own throwaway
 install (`npx -p ... -p typescript@5.9.3`), so the project itself stays on TS 7.
 **Recharts over Highcharts:** declarative React components, MIT-licensed
 (Highcharts needs a paid license for commercial use), and enough for our charts.
+
+## 27. Page controls answer instantly; the URL follows
+**Decided:** Pickers, switches and sliders keep their own React state, so they
+change the moment they're touched. The URL is updated alongside (so a view can be
+shared or bookmarked) without the control waiting on it. The Season page fetches
+every lineup once and filters by minutes in the browser, so the slider never
+waits on the network.
+**Why:** React Router applies URL changes as background transitions; a control
+driven only by the URL lagged about a second behind a tap until new data arrived.
+Found in the browser check of the Season page.

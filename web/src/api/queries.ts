@@ -30,3 +30,21 @@ export function useGame(teamId: string | undefined, gameId: string) {
       unwrap(api.GET("/api/teams/{team_id}/games/{game_id}", { params: { path: { team_id: teamId!, game_id: gameId } } })),
   });
 }
+
+/**
+ * A season's totals, every lineup and every player's on/off split. The page filters
+ * lineups by minutes itself, so moving the slider doesn't wait on the network.
+ */
+export function useSeason(teamId: string | undefined, season: number, excludeGarbage: boolean) {
+  return useQuery({
+    queryKey: ["season", teamId, season, excludeGarbage],
+    enabled: teamId !== undefined,
+    placeholderData: (previous) => previous, // keep showing the last numbers while the toggle refetches
+    queryFn: () =>
+      unwrap(
+        api.GET("/api/teams/{team_id}/seasons/{season}", {
+          params: { path: { team_id: teamId!, season }, query: { min_minutes: 0, exclude_garbage: excludeGarbage } },
+        }),
+      ),
+  });
+}

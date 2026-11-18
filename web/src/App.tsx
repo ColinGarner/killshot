@@ -7,6 +7,7 @@ import { GamesPage } from "./pages/GamesPage";
 // The game page carries the chart library (Recharts, the biggest dependency), so it's
 // downloaded only when someone opens a game. The game list loads without it.
 const GamePage = lazy(() => import("./pages/GamePage").then((m) => ({ default: m.GamePage })));
+const SeasonPage = lazy(() => import("./pages/SeasonPage").then((m) => ({ default: m.SeasonPage })));
 
 export function App() {
   return (
@@ -19,6 +20,14 @@ export function App() {
           element={
             <Suspense fallback={<Loading what="the game" />}>
               <GamePage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="season"
+          element={
+            <Suspense fallback={<Loading what="the season" />}>
+              <SeasonPage />
             </Suspense>
           }
         />

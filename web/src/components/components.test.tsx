@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { Killshot, Lineup } from "../api/client";
+import type { Killshot, Lineup, OnOff } from "../api/client";
 import { Killshots } from "./Killshots";
 import { LineupTable } from "./LineupTable";
+import { OnOffTable } from "./OnOffTable";
 
 const player = (id: string, name: string, short_name: string) => ({ id, name, short_name });
 const lineup: Lineup = {
@@ -35,5 +36,20 @@ describe("Killshots", () => {
     expect(screen.getByText("12-0")).toBeTruthy();
     expect(screen.getByText("2nd 18:35 to 2nd 15:00")).toBeTruthy();
     expect(screen.getByText("51-41 → 63-41")).toBeTruthy();
+  });
+});
+
+describe("OnOffTable", () => {
+  it("shows net rating with the player on, off, and the difference", () => {
+    const { players, stints, ...ratings } = lineup;
+    void players;
+    void stints;
+    const row: OnOff = { player: player("9", "Tre White", "White"), on: { ...ratings, minutes: 91.5, net: 47.2 },
+      off: { ...ratings, net: 29.8 }, on_off: 17.4 };
+    render(<OnOffTable rows={[row]} />);
+    expect(screen.getByText("White")).toBeTruthy();
+    expect(screen.getByText("+47.2")).toBeTruthy();
+    expect(screen.getByText("+29.8")).toBeTruthy();
+    expect(screen.getByText("+17.4")).toBeTruthy();
   });
 });
