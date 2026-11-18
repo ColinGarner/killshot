@@ -109,6 +109,16 @@ def test_built_assets_are_served_and_cached_for_good(site):
     assert "immutable" in r.headers["cache-control"]
 
 
+def test_a_missing_asset_is_a_404_not_the_app(site):
+    # An old tab asking for a script from a previous build must not get HTML back.
+    r = site.get("/assets/app-old999.js")
+    assert r.status_code == 404 and "id=root" not in r.text
+
+
+def test_the_app_page_is_never_cached(site):
+    assert site.get("/games").headers["cache-control"] == "no-cache"
+
+
 def test_unknown_api_paths_stay_404s_not_the_app(site):
     r = site.get("/api/nope")
     assert r.status_code == 404 and "id=root" not in r.text

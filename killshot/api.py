@@ -135,6 +135,10 @@ def frontend(path: str) -> FileResponse:
         # Vite puts a content hash in asset file names, so they can be cached for good.
         return FileResponse(file, headers={"Cache-Control": "public, max-age=31536000, immutable"}
                             if path.startswith("assets/") else None)
+    if path.startswith("assets/"):
+        # A missing script must be a 404, not the page: HTML where the browser expects
+        # JavaScript leaves a blank screen. (Happens to a tab opened before a rebuild.)
+        raise HTTPException(404, "no such file; reload the page")
     index = dist / "index.html"
     if not index.is_file():
         raise HTTPException(404, "frontend not built: run `npm run build` in web/")
