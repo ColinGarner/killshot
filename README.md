@@ -11,6 +11,7 @@ Built for any team; ships with Kansas.
 | `killshot/sources/cbbd.py` | The only code that talks to CollegeBasketballData.com, and translates its data |
 | `killshot/plays.py` | Our own play format, so the basketball code never sees provider field names |
 | `killshot/stints.py` | Splits a game into stretches with the same five players on the floor |
+| `killshot/substitutions.py` | Fills in incomplete on-floor lists by replaying substitutions |
 | `killshot/box.py` | Counting stats, possessions, ratings |
 | `killshot/rollup.py` | Adds stints up into lineups, on/off splits, team totals |
 | `killshot/events.py` | Win probability and killshots |
@@ -18,6 +19,7 @@ Built for any team; ships with Kansas.
 | `migrations/*.sql` | The Postgres schema, one numbered file per change |
 | `killshot/db.py` | All SQL: save a game, read a season's stints |
 | `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
+| `killshot/reprocess.py` | Rebuilds every stored game from its saved raw data (no API calls) |
 | `killshot/inspect.py`, `killshot/season.py` | Print a game or a season from the command line |
 
 Choices behind the code are in [`docs/decisions.md`](docs/decisions.md).
@@ -43,7 +45,8 @@ pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres
 1. Core library ✓
 2. Database (Postgres schema, load history) ✓
    - 2.1 Migration lock ✓
-   - 2.2 **CollegeBasketballData.com as the data source** ← you are here
+   - 2.2 CollegeBasketballData.com as the data source ✓
+   - 2.3 **Fill incomplete lineups from substitutions** ← you are here
 3. Worker (schedule, finals)
 4. API
 5. Railway deploy

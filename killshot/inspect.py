@@ -42,7 +42,8 @@ def main() -> None:
     print(f"\n{team.name} {team.score}, {opp.name} {opp.score}  ({game.status})")
     q = game.quality(team_id)
     print(f"Checks: points match = {q['points_match']}, lineup gaps = {q['invalid_seconds']} s, "
-          f"win probability = {'yes' if q['has_win_prob'] else 'missing'}")
+          f"win probability = {'yes' if q['has_win_prob'] else 'missing'}, "
+          f"lineups filled from subs = {q['lineups_filled']} plays")
 
     rows = rollup.lineups(game.stints[team_id])
     best, worst = rollup.best_and_worst(rows, min_poss=args.min_poss)

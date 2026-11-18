@@ -54,6 +54,7 @@ class Game:
     stints: dict[str, list[Stint]] = field(default_factory=dict)  # by team id
     win_prob: list[events.WinProbPoint] = field(default_factory=list)
     runs: list[events.Run] = field(default_factory=list)
+    lineups_filled: int = 0  # plays whose on-floor list we filled in from substitutions
 
     def team(self, team_id: str) -> Team:
         return self.home if self.home.id == team_id else self.away
@@ -75,6 +76,7 @@ class Game:
         `points_match`: stint points add up to the final score for both sides.
         `invalid_seconds`: time where the data didn't list exactly five players.
         `has_win_prob`: the provider included win probability for this game.
+        `lineups_filled`: plays whose on-floor list was filled in from substitutions.
         """
         stints = self.stints.get(team_id, [])
         valid = [s for s in stints if s.valid]
@@ -84,6 +86,7 @@ class Game:
             "rebuilt_points": pts,
             "invalid_seconds": round(sum(s.seconds for s in stints if not s.valid)),
             "has_win_prob": bool(self.win_prob),
+            "lineups_filled": self.lineups_filled,
         }
 
     def minutes(self, team_id: str) -> dict[str, float]:

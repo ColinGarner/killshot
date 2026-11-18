@@ -115,18 +115,29 @@ and `has_win_prob = False`; the loader flags it.
 **Why:** CBBD has none for 9 of KU's 35 games in 2025-26, mostly February and
 March (e.g. Houston at Kansas, the St. John's tournament game).
 
-## 15. Known CBBD lineup gaps are flagged and left out of ratings
-**Decided:** Plays where CBBD doesn't list exactly five players for a team count
-toward nothing. The loader flags those games. About 1.3% of 2025-26 game time.
-**Known cases (2025-26):** the first two games (Green Bay, at North Carolina)
-list nobody at tip-off, then only players who have subbed in, so roughly the
-first 7-9 minutes have no full KU lineup. At Texas Tech and TCU, CBBD briefly
-lists six players.
-**Possible fix (not done):** for incomplete lists, work out the starters with
-our old ESPN rule ("anyone who subs out before subbing in started") and replay
-substitutions until CBBD's list is complete.
+## 15. Incomplete CBBD lineups are filled in from substitutions
+**Decided:** Where CBBD doesn't list exactly five players for a team, we fill the
+list in (`killshot/substitutions.py`): the starters are whoever acts or subs out
+before subbing in, then substitutions are replayed. A play caught mid-batch (a
+free throw logged between two subs at one moment) takes the five from the end of
+that moment. Complete CBBD lists are always trusted as they are.
+**Found in 2025-26:** the first two games (Green Bay, at North Carolina) list
+nobody at tip-off and add players only as they sub in; at Texas Tech and TCU,
+CBBD briefly lists six. Before this fix those games lost up to 9 minutes of
+lineups and some points. After it, all 39 stored games add up exactly for both
+teams, and 2025-26 team net is back to +8.8.
+**Also used for:** ESPN's live feed in Milestone 7, which never lists the floor.
+**Limit:** in a test that erases KU's lists from the Kentucky game and rebuilds
+them, every player's minutes come back within 30 seconds (CBBD sometimes
+switches its list a play after the logged substitution).
 
 ## 16. Count every CBBD call
 **Decided:** Each request adds one to `api_usage` for the current month. The
 loader prints the total. Slowing live polling as the limit approaches comes
 with the worker (Milestone 3).
+
+## 17. Reprocess from stored raw data after logic changes
+**Decided:** `python -m killshot.reprocess` rebuilds every stored game from
+`games.raw` with the current code. It makes no API calls.
+**Why:** Fixes like decision 15 change past results. Re-reading what we already
+stored is instant, free, and doesn't depend on CBBD still serving old games.
