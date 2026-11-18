@@ -43,3 +43,17 @@ def test_an_unknown_command_points_to_help():
 def test_tools_run_as_subcommands(capsys):
     cli.main(["inspect", "tests/fixtures/cbbd_372750.json.gz"])
     assert "Kansas 89, Kentucky 69" in capsys.readouterr().out
+
+
+def test_killshot_test_runs_both_suites_unless_told_which():
+    assert cli.test_plan([]) == (["python", "web"], [])
+    assert cli.test_plan(["python", "-k", "worker"]) == (["python"], ["-k", "worker"])
+    assert cli.test_plan(["web"]) == (["web"], [])
+
+
+def test_the_tests_never_run_against_the_real_database(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/killshot")
+    monkeypatch.setenv("TEST_DATABASE_URL", "postgresql://localhost/killshot")
+    with pytest.raises(SystemExit) as stop:
+        cli.check_test_database()
+    assert "separate" in str(stop.value)

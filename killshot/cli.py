@@ -2,6 +2,9 @@
 
     killshot start          run the app: site at http://localhost:8000, plus the worker. Ctrl-C stops it.
     killshot migrate        create the database if needed and apply migrations
+    killshot test           run every test: Python (pytest) and the site (Vitest)
+    killshot test python    just the Python tests; extra arguments go to pytest (e.g. -k worker)
+    killshot test web       just the site's tests
 
     killshot load ...       load a team's finished games from CBBD   (`killshot load --help`)
     killshot inspect ...    print one game
@@ -127,6 +130,49 @@ def start(args: list[str]) -> None:
             p.wait(timeout=15)
 
 
+def test_plan(args: list[str]) -> tuple[list[str], list[str]]:
+    """Which suites to run, and the extra arguments to pass along.
+    `killshot test` -> both; `killshot test python -k worker` -> Python only, with `-k worker`."""
+    if args and args[0] in ("python", "web"):
+        return [args[0]], args[1:]
+    return ["python", "web"], args
+
+
+def check_test_database() -> str | None:
+    """The test database URL, after making sure it's safe to wipe and exists.
+    None if it isn't set (the Postgres tests are then skipped)."""
+    url = os.environ.get("TEST_DATABASE_URL")
+    if not url:
+        return None
+    if url == os.environ.get("DATABASE_URL"):
+        sys.exit("TEST_DATABASE_URL is the same as DATABASE_URL. The tests wipe their database, "
+                 "so point TEST_DATABASE_URL at a separate one (e.g. .../killshot_test).")
+    from . import db
+    db.ensure_database(url)
+    return url
+
+
+def test(args: list[str]) -> None:
+    """Run the Python and/or site tests, then print one summary line per suite."""
+    suites, extra = test_plan(args)
+    results: dict[str, bool] = {}
+    if "python" in suites:
+        if check_test_database() is None:
+            print("TEST_DATABASE_URL isn't set, so the Postgres tests will be skipped. See .env.sample.")
+        results["Python"] = subprocess.run([sys.executable, "-m", "pytest", *extra], cwd=ROOT).returncode == 0
+    if "web" in suites:
+        web = ROOT / "web"
+        if not (web / "node_modules").exists():
+            run("npm", "ci", "--no-audit", "--no-fund", cwd=web)
+        npm_args = ["npm", "test", *(["--", *extra] if suites == ["web"] and extra else [])]
+        # Same time zone as CI, so date tests behave identically everywhere.
+        results["Site"] = subprocess.run(npm_args, cwd=web, env={**os.environ, "TZ": "UTC"}).returncode == 0
+
+    print("\n" + "   ".join(f"{name}: {'passed' if ok else 'FAILED'}" for name, ok in results.items()))
+    if not all(results.values()):
+        sys.exit(1)
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0] in ("-h", "--help", "help"):
@@ -136,6 +182,8 @@ def main(argv: list[str] | None = None) -> None:
     name, rest = argv[0], argv[1:]
     if name == "start":
         start(rest)
+    elif name == "test":
+        test(rest)
     elif name in TOOLS:
         asking_for_help = any(a in ("-h", "--help") for a in rest)
         if name in ("migrate", "load", "season", "worker", "reprocess") and not asking_for_help:

@@ -49,6 +49,7 @@ The worker keeps new games coming in while it runs.
 |---|---|
 | `killshot start` | Migrate, build the site if it changed, then run the site and worker |
 | `killshot migrate` | Create the database if needed and apply migrations |
+| `killshot test` | Run every test (Python and site); `killshot test python -k worker` narrows it |
 | `killshot load --team Kansas --seasons 2026 2027` | Load a team's finished games from CBBD |
 | `killshot inspect 372750` | Print one game (a CBBD id, or a saved file in `tests/fixtures/`) |
 | `killshot season --season 2026` | Print a season: ratings, lineups, on/off |
@@ -60,10 +61,9 @@ Every command reads `.env`; a variable set in your shell wins over the file.
 ### Developing
 
 ```bash
-pytest                          # set TEST_DATABASE_URL to a throwaway database to include Postgres tests
+killshot test                   # everything; the Postgres tests use TEST_DATABASE_URL from .env
 cd web && npm run dev           # live-reloading site on :5173 (run `killshot start` alongside for the API)
 cd web && npm run gen:api       # after changing an API response: regenerate the TypeScript types
-cd web && npm test
 ```
 
 ## Roadmap
