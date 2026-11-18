@@ -48,6 +48,7 @@ class Player:
 @dataclass
 class Game:
     id: str
+    season: int              # year the season ends: 2027 = 2026-27
     start: str               # ISO time from ESPN, UTC
     state: str               # "pre", "in" or "post"
     status: str              # ESPN's short status, e.g. "Final" or "12:41 - 2nd"
@@ -102,7 +103,8 @@ class Game:
                 abbr=t.get("abbreviation", ""), color=t.get("color"),
                 is_home=c["homeAway"] == "home", score=int(c.get("score") or 0))
 
-        game = cls(id=summary["header"]["id"], start=comp["date"], state=state,
+        game = cls(id=summary["header"]["id"], season=summary["header"]["season"]["year"],
+                   start=comp["date"], state=state,
                    status=status.get("shortDetail") or status.get("detail", ""),
                    neutral_site=bool(comp.get("neutralSite")), home=teams["home"], away=teams["away"])
 

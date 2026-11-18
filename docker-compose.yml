@@ -1,0 +1,15 @@
+# Local Postgres for development:  docker compose up -d db
+# Then: export DATABASE_URL=postgresql://killshot:killshot@localhost:5432/killshot
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: killshot
+      POSTGRES_PASSWORD: killshot
+      POSTGRES_DB: killshot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
