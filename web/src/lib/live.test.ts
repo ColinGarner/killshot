@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WinProbPoint } from "../api/client";
-import { clockTime, currentRun, isStale } from "./live";
+import { clockTime, currentRun, isGameTime, isStale } from "./live";
 
 /** Win-probability samples from [ours, theirs] scores; only the score matters here. */
 const at = (...scores: [number, number][]): WinProbPoint[] =>
@@ -36,5 +36,16 @@ describe("live freshness", () => {
     const t = new Date(updated).getTime();
     expect(isStale(updated, t + 90_000)).toBe(false);
     expect(isStale(updated, t + 150_000)).toBe(true);
+  });
+});
+
+describe("isGameTime", () => {
+  const tip = "2026-11-19T00:30:00Z";
+  const t = new Date(tip).getTime();
+  it("covers 15 minutes before tip to 4 hours after", () => {
+    expect(isGameTime(tip, t - 20 * 60_000)).toBe(false);
+    expect(isGameTime(tip, t - 10 * 60_000)).toBe(true);
+    expect(isGameTime(tip, t + 3 * 3600_000)).toBe(true);
+    expect(isGameTime(tip, t + 5 * 3600_000)).toBe(false);
   });
 });

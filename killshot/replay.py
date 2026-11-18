@@ -62,6 +62,7 @@ def main() -> None:
             raise SystemExit(f"Game {args.game} isn't a tracked team's game in the database.")
         summary = load_summary(conn, args.game, args.file)
 
+        last_line = None
         try:
             for n in cut_points(summary, args.speed):
                 game = espn.to_game(live.snapshot(summary, n))
@@ -69,8 +70,11 @@ def main() -> None:
                     page = live.build(row, team_id, game)
                     db.save_live(conn, args.game, team_id, page)
                 g = page["game"]
-                print(f"{page['live']['clock'] or 'Tip-off':>10}  {g['pts']}-{g['opp_pts']} vs {g['opponent']['name']}"
-                      f"  ({len(page['killshots'])} killshots)", flush=True)
+                line = (f"{page['live']['clock'] or 'Tip-off':>10}  {g['pts']}-{g['opp_pts']} vs {g['opponent']['name']}"
+                        f"  ({len(page['killshots'])} killshots)")
+                if line != last_line:  # only when the clock or score moved
+                    print(line, flush=True)
+                    last_line = line
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\nStopped.")

@@ -14,6 +14,15 @@ export function clockTime(iso: string): string {
   );
 }
 
+/**
+ * Around a game's scheduled time (15 minutes before tip to 4 hours after), pages keep
+ * checking for updates even before the game goes live, so it switches to live by itself.
+ */
+export function isGameTime(startAt: string, now: number = Date.now()): boolean {
+  const tip = new Date(startAt).getTime();
+  return now >= tip - 15 * 60 * 1000 && now <= tip + 4 * 60 * 60 * 1000;
+}
+
 /** True when the live data is older than STALE_AFTER_MS. */
 export function isStale(updatedAt: string, now: number = Date.now()): boolean {
   return now - new Date(updatedAt).getTime() > STALE_AFTER_MS;
