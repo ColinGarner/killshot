@@ -92,11 +92,13 @@ def save_game(conn: psycopg.Connection, game: Game, raw: dict | None = None) -> 
         conn.execute("DELETE FROM games WHERE id = %s", (game.id,))  # cascades to stints, win_prob, runs
         conn.execute(
             """INSERT INTO games (id, espn_id, season, start_at, state, status, neutral_site,
-                                  home_team_id, away_team_id, home_pts, away_pts, raw)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                                  home_team_id, away_team_id, home_pts, away_pts, raw, plays_saved_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                       CASE WHEN %s THEN now() END)""",
             (game.id, game.espn_id, game.season, game.start, game.state, game.status, game.neutral_site,
              game.home.id, game.away.id, game.home.score, game.away.score,
-             json.dumps(raw) if raw is not None else None))
+             json.dumps(raw) if raw is not None else None,
+             bool(raw and raw.get("plays"))))
 
         columns = ", ".join([f"team_{f}" for f in BOX_FIELDS] + [f"opp_{f}" for f in BOX_FIELDS])
         placeholders = ", ".join(["%s"] * (6 + 2 * len(BOX_FIELDS)))
@@ -149,3 +151,82 @@ def stints_for(conn: psycopg.Connection, team_id: str, season: int) -> list[Stin
 def player_names(conn: psycopg.Connection) -> dict[str, str]:
     """Player id -> short name, for labeling lineups."""
     return dict(conn.execute("SELECT id, short_name FROM players").fetchall())
+
+
+# --- for the worker ------------------------------------------------------------
+
+def upsert_scheduled_game(conn: psycopg.Connection, record: dict, state: str) -> None:
+    """Store or refresh a game from CBBD's schedule (status, time, score), without
+    touching plays or stints already saved for it.
+
+    The CBBD game record is kept in raw["game"], so the worker has it when it's
+    time to fetch the plays.
+    """
+    with conn.transaction():
+        for team_id, name in ((record["homeTeamId"], record["homeTeam"]), (record["awayTeamId"], record["awayTeam"])):
+            conn.execute("INSERT INTO teams (id, name) VALUES (%s, %s) ON CONFLICT (id) DO UPDATE SET name = excluded.name",
+                         (str(team_id), name))
+        conn.execute(
+            """INSERT INTO games (id, espn_id, season, start_at, state, status, neutral_site,
+                                  home_team_id, away_team_id, home_pts, away_pts, raw)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, jsonb_build_object('game', %s::jsonb))
+               ON CONFLICT (id) DO UPDATE SET
+                   espn_id = excluded.espn_id, start_at = excluded.start_at, state = excluded.state,
+                   status = excluded.status, neutral_site = excluded.neutral_site,
+                   home_team_id = excluded.home_team_id, away_team_id = excluded.away_team_id,
+                   home_pts = excluded.home_pts, away_pts = excluded.away_pts,
+                   -- keep any stored plays; just refresh the game record
+                   raw = coalesce(games.raw, '{}'::jsonb) || jsonb_build_object('game', %s::jsonb)""",
+            (str(record["id"]), record.get("sourceId"), record["season"], record["startDate"], state,
+             record["status"].replace("_", " ").title(), bool(record.get("neutralSite")),
+             str(record["homeTeamId"]), str(record["awayTeamId"]),
+             record.get("homePoints"), record.get("awayPoints"),
+             json.dumps(record), json.dumps(record)))
+
+
+def games_needing_plays(conn: psycopg.Connection, max_checks: int) -> list[tuple[str, dict]]:
+    """Finished games whose plays we don't have yet and are due for another try.
+    Returns (game id, CBBD game record) pairs."""
+    return conn.execute(
+        """SELECT id, raw -> 'game' FROM games
+           WHERE state = 'post' AND plays_saved_at IS NULL AND raw ? 'game'
+             AND plays_checks < %s AND (next_plays_check_at IS NULL OR next_plays_check_at <= now())
+           ORDER BY start_at""", (max_checks,)).fetchall()
+
+
+def plays_not_ready(conn: psycopg.Connection, game_id: str, retry_in_minutes: float) -> int:
+    """CBBD had no plays for a finished game yet: count the try and schedule the next.
+    Returns how many tries have now come up empty."""
+    return conn.execute(
+        """UPDATE games SET plays_checks = plays_checks + 1,
+                            next_plays_check_at = now() + make_interval(mins => %s)
+           WHERE id = %s RETURNING plays_checks""", (retry_in_minutes, game_id)).fetchone()[0]
+
+
+def plays_checks(conn: psycopg.Connection, game_id: str) -> int:
+    return conn.execute("SELECT plays_checks FROM games WHERE id = %s", (game_id,)).fetchone()[0]
+
+
+def game_near(conn: psycopg.Connection, team_names: list[str], hours_before: float, hours_after: float) -> bool:
+    """Is a game for one of these teams starting soon, or recently started?"""
+    row = conn.execute(
+        """SELECT 1 FROM games g JOIN teams h ON h.id = g.home_team_id JOIN teams a ON a.id = g.away_team_id
+           WHERE (h.name = ANY(%s) OR a.name = ANY(%s))
+             AND g.start_at BETWEEN now() - make_interval(hours => %s) AND now() + make_interval(hours => %s)
+           LIMIT 1""", (team_names, team_names, hours_after, hours_before)).fetchone()
+    return row is not None
+
+
+def heartbeat(conn: psycopg.Connection, note: str, synced_schedule: bool = False) -> None:
+    """Record that the worker is alive (and, if it just did, when it synced schedules)."""
+    conn.execute(
+        """INSERT INTO worker_status (id, heartbeat_at, last_schedule_sync_at, note)
+           VALUES (1, now(), CASE WHEN %s THEN now() END, %s)
+           ON CONFLICT (id) DO UPDATE SET heartbeat_at = now(), note = excluded.note,
+               last_schedule_sync_at = CASE WHEN %s THEN now() ELSE worker_status.last_schedule_sync_at END""",
+        (synced_schedule, note, synced_schedule))
+
+
+def seconds_since_schedule_sync(conn: psycopg.Connection) -> float | None:
+    row = conn.execute("SELECT extract(epoch FROM now() - last_schedule_sync_at) FROM worker_status WHERE id = 1").fetchone()
+    return float(row[0]) if row and row[0] is not None else None

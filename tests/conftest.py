@@ -1,9 +1,11 @@
 import gzip
 import json
+import os
 from pathlib import Path
 
 import pytest
 
+from killshot import db
 from killshot.game import Game
 from killshot.sources import cbbd
 
@@ -25,3 +27,16 @@ def load_data(game_id: str) -> dict:
 @pytest.fixture(scope="session")
 def games() -> dict[str, Game]:
     return {g: cbbd.to_game(load_data(g)) for g in (FORDHAM, MTSU, KENTUCKY, UNLV)}
+
+
+@pytest.fixture()
+def conn():
+    """A fresh, fully migrated database. Needs TEST_DATABASE_URL pointing at a
+    throwaway database: every table is dropped and recreated."""
+    url = os.environ.get("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_DATABASE_URL not set")
+    with db.connect(url) as c:
+        c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+        db.migrate(c)
+        yield c

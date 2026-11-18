@@ -141,3 +141,33 @@ with the worker (Milestone 3).
 `games.raw` with the current code. It makes no API calls.
 **Why:** Fixes like decision 15 change past results. Re-reading what we already
 stored is instant, free, and doesn't depend on CBBD still serving old games.
+
+## 18. The worker stores scheduled games, then fills in plays after the final
+**Decided:** On each schedule sync the worker stores every tracked game with
+CBBD's game record in `games.raw["game"]` (no plays). After CBBD marks it final,
+the worker fetches the plays and saves the full game. Refreshing the schedule
+later never erases plays already saved.
+**Why:** CBBD publishes play-by-play only after a game (tested 2026-11-18: none
+during a live game). Keeping the record lets the worker fetch plays without
+another schedule call, and upcoming games are already in the database for the
+API and frontend.
+
+## 19. Poll on a schedule that protects the monthly allowance
+**Decided:** Schedule syncs run every 10 minutes from 1 hour before tip to 4
+hours after, and every 6 hours otherwise. Missing plays are retried after 5,
+10, 20, 40, then every 60 minutes, for up to 48 tries. At 90% of the monthly
+limit (`CBBD_MONTHLY_LIMIT`, default 5,000) every wait is stretched 4x; at 100%
+the worker makes no calls until the next month.
+**Cost (KU only):** about 4 calls a day without games and about 30 on a game
+day: roughly 300-500 a month.
+
+## 20. Placeholder opponents are skipped
+**Decided:** Games where CBBD lists the opponent as "TBD" (tournament games
+before the bracket is set) aren't stored until the opponent is known.
+**Why:** Storing them would create a fake team named "TBD" in `teams`.
+
+## 21. Deploy once, after the frontend and live view
+**Decided:** Milestones run 3 (worker), 4 (API), 6 (frontend), 7 (live), then
+5 (Railway deploy) last.
+**Why:** Deploying all the pieces together means one Railway setup instead of
+several partial ones.

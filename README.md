@@ -19,6 +19,7 @@ Built for any team; ships with Kansas.
 | `migrations/*.sql` | The Postgres schema, one numbered file per change |
 | `killshot/db.py` | All SQL: save a game, read a season's stints |
 | `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
+| `killshot/worker.py` | Runs forever: syncs schedules, saves each game after the final, within the API budget |
 | `killshot/reprocess.py` | Rebuilds every stored game from its saved raw data (no API calls) |
 | `killshot/inspect.py`, `killshot/season.py` | Print a game or a season from the command line |
 
@@ -35,6 +36,7 @@ export DATABASE_URL=postgresql://killshot:killshot@localhost:5432/killshot
 export CBBD_API_KEY=...                                         # your CollegeBasketballData.com key
 python -m killshot.load --team Kansas --seasons 2026 2027       # ~40 games, ~41 API calls
 python -m killshot.season --season 2026                         # team ratings, lineups, on/off
+python -m killshot.worker --once                                # one worker pass; drop --once to run forever
 psql "$DATABASE_URL" -c "SELECT sum(team_pts), sum(opp_pts) FROM stints WHERE team_id = '131'"
 
 pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres tests
@@ -46,10 +48,10 @@ pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres
 2. Database (Postgres schema, load history) ✓
    - 2.1 Migration lock ✓
    - 2.2 CollegeBasketballData.com as the data source ✓
-   - 2.3 **Fill incomplete lineups from substitutions** ← you are here
-3. Worker (schedule, finals)
+   - 2.3 Fill incomplete lineups from substitutions ✓
+3. **Worker (schedule, finals)** ← you are here
 4. API
-5. Railway deploy
 6. Frontend
 7. Live games and mobile
+5. Railway deploy (everything at once, after 6 and 7)
 8. Garbage-time toggle, foul trouble, scouting
