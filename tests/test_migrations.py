@@ -27,7 +27,6 @@ URL = os.environ.get("TEST_DATABASE_URL")
 def test_two_processes_migrating_at_once_apply_each_file_exactly_once():
     with db.connect(URL) as c:
         c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-        c.commit()
 
     results, errors = [], []
 

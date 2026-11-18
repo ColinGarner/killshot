@@ -5,19 +5,23 @@ from pathlib import Path
 import pytest
 
 from killshot.game import Game
+from killshot.sources import cbbd
 
 FIXTURES = Path(__file__).parent / "fixtures"
-KANSAS = "2305"
 
-# KU's first four 2026-27 games, saved from ESPN.
-FORDHAM, MTSU, KENTUCKY, UNLV = "401909784", "401909785", "401909786", "401909787"
+# CBBD team ids
+KANSAS, KENTUCKY_TEAM = "131", "135"
+
+# KU's first four 2026-27 games, saved from CollegeBasketballData.com (CBBD game ids).
+FORDHAM, MTSU, KENTUCKY, UNLV = "372645", "372703", "372750", "372836"
 
 
-def load_summary(event_id: str) -> dict:
-    with gzip.open(FIXTURES / f"{event_id}.json.gz", "rt") as f:
+def load_data(game_id: str) -> dict:
+    """CBBD's game record and plays, as `cbbd.Client.game_data` returns them."""
+    with gzip.open(FIXTURES / f"cbbd_{game_id}.json.gz", "rt") as f:
         return json.load(f)
 
 
 @pytest.fixture(scope="session")
 def games() -> dict[str, Game]:
-    return {e: Game.from_summary(load_summary(e)) for e in (FORDHAM, MTSU, KENTUCKY, UNLV)}
+    return {g: cbbd.to_game(load_data(g)) for g in (FORDHAM, MTSU, KENTUCKY, UNLV)}

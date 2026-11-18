@@ -27,7 +27,7 @@ def test_excluding_garbage_time_changes_the_blowout_numbers(games):
 def test_best_and_worst_lineups_never_overlap(games):
     rows = rollup.lineups(games[KENTUCKY].stints[KANSAS])
     best, worst = rollup.best_and_worst(rows, min_poss=3)
-    assert best[0]["net"] == 133.9 and best[0]["plus_minus"] == 11
+    assert best[0]["net"] == 154.2 and best[0]["plus_minus"] == 8
     assert not {tuple(r["player_ids"]) for r in best} & {tuple(r["player_ids"]) for r in worst}
 
 

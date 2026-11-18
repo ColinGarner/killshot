@@ -9,7 +9,7 @@ import os
 import pytest
 
 from killshot import db, rollup
-from conftest import FORDHAM, KANSAS, KENTUCKY, MTSU, UNLV, load_summary
+from conftest import FORDHAM, KANSAS, KENTUCKY, KENTUCKY_TEAM, MTSU, UNLV, load_data
 
 URL = os.environ.get("TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
@@ -19,7 +19,6 @@ pytestmark = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
 def conn():
     with db.connect(URL) as c:
         c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-        c.commit()
         db.migrate(c)
         yield c
 
@@ -30,7 +29,7 @@ def test_migrations_run_once(conn):
 
 def test_stints_round_trip_through_postgres(conn, games):
     for event in (FORDHAM, MTSU, KENTUCKY):
-        db.save_game(conn, games[event], load_summary(event))
+        db.save_game(conn, games[event], load_data(event))
     totals = rollup.team_totals(db.stints_for(conn, KANSAS, 2027))
     assert (totals["ortg"], totals["drtg"], totals["net"]) == (122.7, 80.4, 42.2)
 
@@ -47,9 +46,9 @@ def test_saving_a_game_twice_does_not_duplicate_it(conn, games):
 def test_both_teams_and_the_killshot_are_stored(conn, games):
     db.save_game(conn, games[KENTUCKY])
     teams = {row[0] for row in conn.execute("SELECT DISTINCT team_id FROM stints")}
-    assert teams == {KANSAS, "96"}  # Kansas and Kentucky
+    assert teams == {KANSAS, KENTUCKY_TEAM}
     run = conn.execute("SELECT team_id, pts, home0, away0, home1, away1 FROM runs").fetchone()
-    assert run == (KANSAS, 12, 41, 51, 41, 63)
+    assert run == (KANSAS, 12, 51, 41, 63, 41)
 
 
 def test_points_can_be_summed_in_plain_sql(conn, games):
@@ -57,3 +56,9 @@ def test_points_can_be_summed_in_plain_sql(conn, games):
     pts = conn.execute(
         "SELECT sum(team_pts), sum(opp_pts) FROM stints WHERE team_id = %s", (KANSAS,)).fetchone()
     assert pts == (89, 69)
+
+
+def test_api_calls_are_counted_per_month(conn):
+    for _ in range(3):
+        db.count_api_call(conn)
+    assert db.api_calls_this_month(conn) == 3

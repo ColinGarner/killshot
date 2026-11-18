@@ -1,18 +1,19 @@
 """Print one game the way the dashboard shows it.
 
-    python -m killshot.inspect 401909786              # fetch from ESPN
-    python -m killshot.inspect tests/fixtures/401909786.json.gz
-    python -m killshot.inspect 401909786 --team 96    # Kentucky's side
+    python -m killshot.inspect tests/fixtures/cbbd_372750.json.gz   # a saved game
+    python -m killshot.inspect 372750                               # fetch from CBBD (2 API calls)
+    python -m killshot.inspect 372750 --team 135                    # Kentucky's side
 """
 import argparse
 import gzip
 import json
 from pathlib import Path
 
-from . import espn, rollup
-from .game import Game
+from . import rollup
+from .clock import label
+from .sources import cbbd
 
-KANSAS = "2305"
+KANSAS = "131"  # CBBD team id
 
 
 def load(source: str) -> dict:
@@ -21,25 +22,27 @@ def load(source: str) -> dict:
         opener = gzip.open if path.suffix == ".gz" else open
         with opener(path, "rt") as f:
             return json.load(f)
-    return espn.summary(source)
+    client = cbbd.Client()
+    (record,) = client.get("/games", id=source) or [None]
+    return client.game_data(record)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("game", help="ESPN event id or path to a saved summary")
+    ap.add_argument("game", help="CBBD game id or path to a saved game")
     ap.add_argument("--team", help="team id to view the game from (default: Kansas if playing, else home)")
     ap.add_argument("--min-poss", type=float, default=3, help="possessions for a lineup to qualify")
     args = ap.parse_args()
 
-    game = Game.from_summary(load(args.game))
+    game = cbbd.to_game(load(args.game))
     team_id = args.team or (KANSAS if KANSAS in (game.home.id, game.away.id) else game.home.id)
     team, opp = game.team(team_id), game.opponent(team_id)
     names = {pid: p.short_name for pid, p in game.players.items()}
 
     print(f"\n{team.name} {team.score}, {opp.name} {opp.score}  ({game.status})")
     q = game.quality(team_id)
-    print(f"Reconstruction: points match = {q['points_match']}, "
-          f"worst minutes error = {q['max_minutes_error']} min, unassigned time = {q['invalid_seconds']} s")
+    print(f"Checks: points match = {q['points_match']}, lineup gaps = {q['invalid_seconds']} s, "
+          f"win probability = {'yes' if q['has_win_prob'] else 'missing'}")
 
     rows = rollup.lineups(game.stints[team_id])
     best, worst = rollup.best_and_worst(rows, min_poss=args.min_poss)
@@ -52,11 +55,11 @@ def main() -> None:
             print("  (none qualify)")
 
     print("\nKillshots (10-0 runs)")
-    from .clock import label
     for run in game.runs:
-        who = game.team(run.team_id).abbr
-        print(f"  {who} {run.label}  {label(run.t0)} to {label(run.t1)}  "
-              f"{run.home0}-{run.away0} -> {run.home1}-{run.away1} (home-away)")
+        before = (run.home0, run.away0) if team.is_home else (run.away0, run.home0)
+        after = (run.home1, run.away1) if team.is_home else (run.away1, run.home1)
+        print(f"  {game.team(run.team_id).name} {run.label}  {label(run.t0)} to {label(run.t1)}  "
+              f"{before[0]}-{before[1]} -> {after[0]}-{after[1]}")
     if not game.runs:
         print("  (none)")
 

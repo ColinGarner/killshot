@@ -2,7 +2,7 @@
 
 Everything in killshot measures time as *game seconds elapsed*: 0 at tip-off,
 1200 at halftime, 2400 at the end of regulation, then +300 per overtime.
-That turns ESPN's "period 2, 14:20 left" into one number we can subtract.
+That turns "period 2, 14:20 left" into one number we can subtract.
 """
 
 HALF = 1200  # men's college basketball plays two 20-minute halves
@@ -21,11 +21,11 @@ def period_length(period: int) -> int:
 
 
 def elapsed(period: int, clock: str) -> float:
-    """Convert ESPN's period number and clock text ("14:20" or "45.2") to game seconds."""
+    """Convert a period number and clock text ("14:20", or "45.2" under a minute) to game seconds."""
     if ":" in clock:
         minutes, seconds = clock.split(":")
         left = int(minutes) * 60 + float(seconds)
-    else:  # under a minute ESPN shows just seconds
+    else:  # under a minute, clocks show just seconds
         left = float(clock)
     return period_start(period) + period_length(period) - left
 
