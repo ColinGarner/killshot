@@ -45,7 +45,8 @@ def main() -> None:
                       + (f"  <- {', '.join(problems)}" if problems else ""))
                 time.sleep(0.2)  # be polite
 
-        print(f"CBBD calls this month: {db.api_calls_this_month(conn)} (Tier 1 limit 5,000)")
+        print(f"CBBD calls this month: {db.api_calls_this_month(conn)} "
+              f"(limit {int(os.environ.get('CBBD_MONTHLY_LIMIT', '5000')):,})")
 
 
 if __name__ == "__main__":

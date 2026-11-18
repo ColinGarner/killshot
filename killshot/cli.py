@@ -1,6 +1,7 @@
 """The `killshot` command. Install it once with `pip install -e .`
 
     killshot start          run the app: site at http://localhost:8000, plus the worker. Ctrl-C stops it.
+    killshot serve          the same on a server (Railway): no site build, no browser, open to the network
     killshot migrate        create the database if needed and apply migrations
     killshot test           run every test: Python (pytest) and the site (Vitest)
     killshot test python    just the Python tests; extra arguments go to pytest (e.g. -k worker)
@@ -103,22 +104,20 @@ def wait_for_site(url: str, seconds: int = 30) -> bool:
     return False
 
 
-def start(args: list[str]) -> None:
-    """Migrate, build the site if needed, load history the first time, then run the site and worker."""
-    require("DATABASE_URL", "CBBD_API_KEY")
-    from . import migrate
+def first_load() -> None:
+    """The first time, load each tracked team's last two seasons (about 40 CBBD calls each)."""
     from .worker import current_season
+    if has_games():
+        return
+    season = current_season(dt.date.today())  # e.g. 2027 for 2026-27
+    for team in [t.strip() for t in os.environ.get("TRACKED_TEAMS", "Kansas").split(",") if t.strip()]:
+        print(f"First start: loading {team}'s last two seasons (about 40 CBBD calls)...", flush=True)
+        run(sys.executable, "-m", "killshot.load", "--team", team, "--seasons", str(season - 1), str(season))
 
-    migrate.main()
-    build_site_if_needed()
 
-    if not has_games():
-        season = current_season(dt.date.today())  # e.g. 2027 for 2026-27
-        for team in [t.strip() for t in os.environ.get("TRACKED_TEAMS", "Kansas").split(",") if t.strip()]:
-            print(f"First start: loading {team}'s last two seasons (about 40 CBBD calls)...")
-            run(sys.executable, "-m", "killshot.load", "--team", team, "--seasons", str(season - 1), str(season))
-
-    # Ctrl-C and a plain `kill` both stop everything, however `killshot start` was launched.
+def run_app(host: str, open_browser: bool) -> None:
+    """Run the site and the worker side by side until Ctrl-C, SIGTERM, or one of them stops."""
+    # Ctrl-C and a plain `kill` (or Railway replacing the service) both stop everything.
     signal.signal(signal.SIGINT, signal.default_int_handler)
     signal.signal(signal.SIGTERM, signal.default_int_handler)
 
@@ -126,24 +125,54 @@ def start(args: list[str]) -> None:
     url = f"http://localhost:{port}"
     processes = [
         subprocess.Popen([sys.executable, "-m", "killshot.worker"], cwd=ROOT),
-        subprocess.Popen([sys.executable, "-m", "uvicorn", "killshot.api:app", "--port", port, "--log-level", "warning"],
-                         cwd=ROOT),
+        subprocess.Popen([sys.executable, "-m", "uvicorn", "killshot.api:app", "--host", host, "--port", port,
+                          "--log-level", "warning"], cwd=ROOT),
     ]
+    stopped_by_user = False
     try:
         if wait_for_site(url):
-            print(f"\nKillshot is running at {url}   (Ctrl-C to stop)\n")
-            if "--no-open" not in args:
+            print(f"\nKillshot is running at {url}   (Ctrl-C to stop)\n", flush=True)
+            if open_browser:
                 webbrowser.open(url)
         while all(p.poll() is None for p in processes):
             time.sleep(1)
-        print("A process stopped unexpectedly; shutting down.")
+        print("A process stopped unexpectedly; shutting down.", flush=True)
     except KeyboardInterrupt:
-        print("\nStopping...")
+        stopped_by_user = True
     finally:
+        # Already stopping: a second Ctrl-C or SIGTERM mustn't interrupt the cleanup.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        print("\nStopping...", flush=True)
         for p in processes:
             p.terminate()
         for p in processes:
             p.wait(timeout=15)
+    if not stopped_by_user:
+        sys.exit(1)  # so a server (Railway) restarts it
+
+
+def start(args: list[str]) -> None:
+    """Migrate, build the site if needed, load history the first time, then run the site and worker."""
+    require("DATABASE_URL", "CBBD_API_KEY")
+    from . import migrate
+
+    migrate.main()
+    build_site_if_needed()
+    first_load()
+    run_app("127.0.0.1", open_browser="--no-open" not in args)
+
+
+def serve(args: list[str]) -> None:
+    """On a server: migrate, load history the first time, then run the site and worker.
+    The site is built into the image beforehand (see Dockerfile), and listens on every
+    network interface so the host's router can reach it."""
+    require("DATABASE_URL", "CBBD_API_KEY")
+    from . import migrate
+
+    migrate.main()
+    first_load()
+    run_app("0.0.0.0", open_browser=False)
 
 
 def test_plan(args: list[str]) -> tuple[list[str], list[str]]:
@@ -199,6 +228,8 @@ def main(argv: list[str] | None = None) -> None:
     name, rest = argv[0], argv[1:]
     if name == "start":
         start(rest)
+    elif name == "serve":
+        serve(rest)
     elif name == "test":
         test(rest)
     elif name in TOOLS:

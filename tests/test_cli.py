@@ -31,7 +31,16 @@ def test_missing_settings_say_which_and_where_to_put_them(monkeypatch):
 def test_help_lists_the_commands(capsys):
     cli.main(["--help"])
     out = capsys.readouterr().out
-    assert "killshot start" in out and "killshot migrate" in out
+    assert "killshot start" in out and "killshot migrate" in out and "killshot serve" in out
+
+
+def test_serve_on_a_server_needs_the_database_and_key(monkeypatch, tmp_path):
+    # On Railway there's no .env: missing variables must stop it with a clear message.
+    monkeypatch.setattr(cli, "ROOT", tmp_path)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(SystemExit) as stop:
+        cli.serve([])
+    assert "DATABASE_URL" in str(stop.value)
 
 
 def test_an_unknown_command_points_to_help():
