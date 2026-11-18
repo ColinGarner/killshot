@@ -258,3 +258,15 @@ score, stint points and killshots, with player minutes within 1.5.
 API for live data. If ESPN's format changes, the live page goes stale; history
 is untouched. ESPN and CBBD can disagree on home and away at neutral sites, so
 the two are matched by team, never by side.
+
+## 30. One Railway service runs the site and the worker
+**Decided:** Railway runs a single service from the `Dockerfile`: `killshot serve`
+starts the API (which also serves the built site) and the worker side by side,
+like `killshot start` does locally, plus Railway's Postgres. If either process
+stops, the other is stopped too and the service exits, so Railway restarts both.
+**Why:** One thing to set up, one set of variables, one log. The worker is light
+(a few CBBD calls an hour, an ESPN read every 30 seconds during games), so it
+doesn't need its own machine. `/healthz` fails when the worker's heartbeat is
+older than 30 minutes, so a stuck worker shows up as an unhealthy service.
+**Gave up:** scaling the web part separately and restarting one without the
+other. Splitting later is a second service with the start command `killshot worker`.

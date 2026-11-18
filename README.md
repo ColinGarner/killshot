@@ -53,6 +53,7 @@ The worker keeps new games coming in while it runs.
 | Command | What it does |
 |---|---|
 | `killshot start` | Migrate, build the site if it changed, then run the site and worker |
+| `killshot serve` | The same on a server (Railway): no build, no browser, open to the network |
 | `killshot migrate` | Create the database if needed and apply migrations |
 | `killshot test` | Run every test (Python and site); `killshot test python -k worker` narrows it |
 | `killshot load --team Kansas --seasons 2026 2027` | Load a team's finished games from CBBD |
@@ -72,6 +73,37 @@ cd web && npm run dev           # live-reloading site on :5173 (run `killshot st
 cd web && npm run gen:api       # after changing an API response: regenerate the TypeScript types
 ```
 
+## Deploy (Railway)
+
+One Railway service runs everything: the API, the site and the worker, from the
+`Dockerfile`, with settings in `railway.json`. It deploys on every push to `main`.
+
+**First time:**
+
+1. In Railway, create a new project and add **PostgreSQL**.
+2. Add a service from this GitHub repo. Railway finds `railway.json` and builds the `Dockerfile`.
+3. On that service's **Variables** tab, add:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (Railway fills in the database's address) |
+   | `CBBD_API_KEY` | your CollegeBasketballData.com key |
+   | `CBBD_MONTHLY_LIMIT` | `25000` (Tier 2 is 30,000; this leaves room for running it locally too) |
+   | `TRACKED_TEAMS` | `Kansas` |
+
+4. Under **Settings → Networking**, click **Generate Domain** for a public `*.up.railway.app` address.
+
+The first deploy creates the tables and loads the last two seasons (about 40 CBBD
+calls, a minute or so) before the site answers. Railway waits for `/healthz` to
+say the worker is alive before switching traffic to a new deploy.
+
+**Logs:** the service's Deployments tab shows the worker's lines (`schedule synced`,
+`live: 2nd 12:41 54-48 ...`, `live check: ESPN and CBBD agree`).
+
+`killshot serve` is what runs there: `killshot start` without the site build (the
+image already has it) or the browser, listening on the network instead of just
+the machine itself.
+
 ## Roadmap
 
 1. Core library ✓
@@ -87,8 +119,8 @@ cd web && npm run gen:api       # after changing an API response: regenerate the
    - 7.1 ESPN translator ✓
    - 7.2 Live state and `killshot replay` ✓
    - 7.3 Worker polls live games ✓
-   - 7.4 API serves the live game ← this PR
-   - 7.5 Live game page ← this PR
-   - 7.6 Phone layout and Add to Home Screen
-5. Railway deploy (everything at once, after 6 and 7)
+   - 7.4 API serves the live game ✓
+   - 7.5 Live game page ✓
+   - 7.6 Phone layout and Add to Home Screen (after the deploy)
+5. **Railway deploy** ← this PR
 8. Garbage-time toggle, foul trouble, scouting
