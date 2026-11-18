@@ -189,3 +189,46 @@ heartbeat is under 30 minutes old; otherwise 503. The worker now wakes at least
 every 15 minutes to record a heartbeat (with no API calls unless something is due).
 **Why:** On Railway, a dead worker would otherwise go unnoticed: the website keeps
 serving old data. A failing health check is something an uptime monitor can alert on.
+
+## 24. Response models in Python, generated types in TypeScript
+**Decided:** Every API route declares its response shape as a Pydantic class
+(`killshot/schemas.py`). `python -m killshot.openapi` exports the OpenAPI schema,
+from which the frontend's TypeScript types are generated (decision 26). Games
+also carry `time_tbd`, from CBBD's `startTimeTbd`, because CBBD sends a
+placeholder 11:00 PM for games whose tip time isn't announced.
+**Why:** A change to the API's JSON shows up as a TypeScript error at every place
+the frontend uses it, instead of as a broken page. FastAPI also checks every
+response against its model, and `/docs` shows every field.
+
+## 25. One service serves the API and the site
+**Decided:** FastAPI serves the built frontend from `web/dist`: hashed asset files
+are cached forever, and any other non-API URL gets `index.html` so the
+frontend's routes work on reload. Unknown `/api/...` paths stay 404s, and no
+file outside `web/dist` is ever served.
+**Why:** One Railway service instead of two, and no cross-origin setup.
+
+## 26. React frontend, on the latest stable releases
+**Decided:** The frontend in `web/` is React 19 with TypeScript 7, Vite 8,
+Tailwind 4, React Router 8, TanStack Query 5 and Recharts 3, built on Node 26
+(the current LTS). Versions were checked against npm on 2026-11-18. The frontend
+calls the API through a typed client (openapi-fetch) whose types `npm run gen:api`
+generates from the API's schema (decision 24); CI fails if they're out of date.
+**Why:** React is what the owner knows best, which makes the frontend the most
+reviewable part of the project. Components are shared across the Game log, Live
+and Season views, and the live view (Milestone 7) is natural with React state.
+**Gave up:** A build step and npm dependencies to keep current.
+**Wrinkle:** openapi-typescript still needs TypeScript 5's compiler API, which
+TypeScript 7 no longer has. `npm run gen:api` runs it in its own throwaway
+install (`npx -p ... -p typescript@5.9.3`), so the project itself stays on TS 7.
+**Recharts over Highcharts:** declarative React components, MIT-licensed
+(Highcharts needs a paid license for commercial use), and enough for our charts.
+
+## 27. Page controls answer instantly; the URL follows
+**Decided:** Pickers, switches and sliders keep their own React state, so they
+change the moment they're touched. The URL is updated alongside (so a view can be
+shared or bookmarked) without the control waiting on it. The Season page fetches
+every lineup once and filters by minutes in the browser, so the slider never
+waits on the network.
+**Why:** React Router applies URL changes as background transitions; a control
+driven only by the URL lagged about a second behind a tap until new data arrived.
+Found in the browser check of the Season page.

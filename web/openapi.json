@@ -1,0 +1,927 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "killshot",
+  "description": "Lineups, win probability and killshots for college basketball.",
+  "version": "0.1.0"
+ },
+ "paths": {
+  "/healthz": {
+   "get": {
+    "summary": "Healthz",
+    "description": "Up if the database answers and the worker has checked in within 30 minutes.",
+    "operationId": "healthz_healthz_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/teams": {
+   "get": {
+    "summary": "Teams",
+    "operationId": "teams_api_teams_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/Team"
+         },
+         "type": "array",
+         "title": "Response Teams Api Teams Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/teams/{team_id}/games": {
+   "get": {
+    "summary": "Games",
+    "description": "The schedule and results for a season, oldest first.",
+    "operationId": "games_api_teams__team_id__games_get",
+    "parameters": [
+     {
+      "name": "team_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Team Id"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Season"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/GameSummary"
+         },
+         "title": "Response Games Api Teams  Team Id  Games Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/teams/{team_id}/games/{game_id}": {
+   "get": {
+    "summary": "Game",
+    "description": "One game: best and worst lineups, win probability over time, and killshots.",
+    "operationId": "game_api_teams__team_id__games__game_id__get",
+    "parameters": [
+     {
+      "name": "team_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Team Id"
+      }
+     },
+     {
+      "name": "game_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Game Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GameDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/teams/{team_id}/seasons/{season}": {
+   "get": {
+    "summary": "Season",
+    "description": "Season totals, lineups with at least `min_minutes` together, and on/off splits.",
+    "operationId": "season_api_teams__team_id__seasons__season__get",
+    "parameters": [
+     {
+      "name": "team_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Team Id"
+      }
+     },
+     {
+      "name": "season",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Season"
+      }
+     },
+     {
+      "name": "min_minutes",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "default": 20,
+       "title": "Min Minutes"
+      }
+     },
+     {
+      "name": "exclude_garbage",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Exclude Garbage"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Season"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "GameDetail": {
+    "properties": {
+     "game": {
+      "$ref": "#/components/schemas/GameSummary"
+     },
+     "min_poss": {
+      "type": "integer",
+      "title": "Min Poss"
+     },
+     "lineups": {
+      "$ref": "#/components/schemas/GameLineups"
+     },
+     "win_prob": {
+      "items": {
+       "$ref": "#/components/schemas/WinProbPoint"
+      },
+      "type": "array",
+      "title": "Win Prob"
+     },
+     "killshots": {
+      "items": {
+       "$ref": "#/components/schemas/Killshot"
+      },
+      "type": "array",
+      "title": "Killshots"
+     }
+    },
+    "type": "object",
+    "required": [
+     "game",
+     "min_poss",
+     "lineups",
+     "win_prob",
+     "killshots"
+    ],
+    "title": "GameDetail"
+   },
+   "GameLineups": {
+    "properties": {
+     "best": {
+      "items": {
+       "$ref": "#/components/schemas/Lineup"
+      },
+      "type": "array",
+      "title": "Best"
+     },
+     "worst": {
+      "items": {
+       "$ref": "#/components/schemas/Lineup"
+      },
+      "type": "array",
+      "title": "Worst"
+     }
+    },
+    "type": "object",
+    "required": [
+     "best",
+     "worst"
+    ],
+    "title": "GameLineups"
+   },
+   "GameSummary": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "start_at": {
+      "type": "string",
+      "title": "Start At"
+     },
+     "time_tbd": {
+      "type": "boolean",
+      "title": "Time Tbd"
+     },
+     "state": {
+      "type": "string",
+      "enum": [
+       "pre",
+       "in",
+       "post"
+      ],
+      "title": "State"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "venue": {
+      "type": "string",
+      "enum": [
+       "home",
+       "away",
+       "neutral"
+      ],
+      "title": "Venue"
+     },
+     "opponent": {
+      "$ref": "#/components/schemas/Team"
+     },
+     "pts": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pts"
+     },
+     "opp_pts": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Opp Pts"
+     },
+     "result": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "W",
+         "L"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result"
+     },
+     "has_plays": {
+      "type": "boolean",
+      "title": "Has Plays"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "start_at",
+     "time_tbd",
+     "state",
+     "status",
+     "venue",
+     "opponent",
+     "pts",
+     "opp_pts",
+     "result",
+     "has_plays"
+    ],
+    "title": "GameSummary"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "Health": {
+    "properties": {
+     "ok": {
+      "type": "boolean",
+      "title": "Ok"
+     },
+     "database": {
+      "type": "string",
+      "title": "Database"
+     },
+     "worker_heartbeat_seconds_ago": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Worker Heartbeat Seconds Ago"
+     },
+     "worker_note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Worker Note"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ok",
+     "database",
+     "worker_heartbeat_seconds_ago",
+     "worker_note"
+    ],
+    "title": "Health"
+   },
+   "Killshot": {
+    "properties": {
+     "by": {
+      "type": "string",
+      "enum": [
+       "team",
+       "opponent"
+      ],
+      "title": "By"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "pts": {
+      "type": "integer",
+      "title": "Pts"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "t0": {
+      "type": "integer",
+      "title": "T0"
+     },
+     "t1": {
+      "type": "integer",
+      "title": "T1"
+     },
+     "score_before": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Score Before"
+     },
+     "score_after": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Score After"
+     }
+    },
+    "type": "object",
+    "required": [
+     "by",
+     "label",
+     "pts",
+     "start",
+     "end",
+     "t0",
+     "t1",
+     "score_before",
+     "score_after"
+    ],
+    "title": "Killshot"
+   },
+   "Lineup": {
+    "properties": {
+     "minutes": {
+      "type": "number",
+      "title": "Minutes"
+     },
+     "poss": {
+      "type": "number",
+      "title": "Poss"
+     },
+     "pts": {
+      "type": "integer",
+      "title": "Pts"
+     },
+     "opp_pts": {
+      "type": "integer",
+      "title": "Opp Pts"
+     },
+     "plus_minus": {
+      "type": "integer",
+      "title": "Plus Minus"
+     },
+     "ortg": {
+      "type": "number",
+      "title": "Ortg"
+     },
+     "drtg": {
+      "type": "number",
+      "title": "Drtg"
+     },
+     "net": {
+      "type": "number",
+      "title": "Net"
+     },
+     "efg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Efg"
+     },
+     "opp_efg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Opp Efg"
+     },
+     "tov": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tov"
+     },
+     "orb": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Orb"
+     },
+     "ftr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ftr"
+     },
+     "players": {
+      "items": {
+       "$ref": "#/components/schemas/Player"
+      },
+      "type": "array",
+      "title": "Players"
+     },
+     "stints": {
+      "type": "integer",
+      "title": "Stints"
+     }
+    },
+    "type": "object",
+    "required": [
+     "minutes",
+     "poss",
+     "pts",
+     "opp_pts",
+     "plus_minus",
+     "ortg",
+     "drtg",
+     "net",
+     "efg",
+     "opp_efg",
+     "tov",
+     "orb",
+     "ftr",
+     "players",
+     "stints"
+    ],
+    "title": "Lineup"
+   },
+   "OnOff": {
+    "properties": {
+     "player": {
+      "$ref": "#/components/schemas/Player"
+     },
+     "on": {
+      "$ref": "#/components/schemas/Ratings"
+     },
+     "off": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Ratings"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "on_off": {
+      "type": "number",
+      "title": "On Off"
+     }
+    },
+    "type": "object",
+    "required": [
+     "player",
+     "on",
+     "off",
+     "on_off"
+    ],
+    "title": "OnOff"
+   },
+   "Player": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "short_name": {
+      "type": "string",
+      "title": "Short Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "short_name"
+    ],
+    "title": "Player"
+   },
+   "Ratings": {
+    "properties": {
+     "minutes": {
+      "type": "number",
+      "title": "Minutes"
+     },
+     "poss": {
+      "type": "number",
+      "title": "Poss"
+     },
+     "pts": {
+      "type": "integer",
+      "title": "Pts"
+     },
+     "opp_pts": {
+      "type": "integer",
+      "title": "Opp Pts"
+     },
+     "plus_minus": {
+      "type": "integer",
+      "title": "Plus Minus"
+     },
+     "ortg": {
+      "type": "number",
+      "title": "Ortg"
+     },
+     "drtg": {
+      "type": "number",
+      "title": "Drtg"
+     },
+     "net": {
+      "type": "number",
+      "title": "Net"
+     },
+     "efg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Efg"
+     },
+     "opp_efg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Opp Efg"
+     },
+     "tov": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tov"
+     },
+     "orb": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Orb"
+     },
+     "ftr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ftr"
+     }
+    },
+    "type": "object",
+    "required": [
+     "minutes",
+     "poss",
+     "pts",
+     "opp_pts",
+     "plus_minus",
+     "ortg",
+     "drtg",
+     "net",
+     "efg",
+     "opp_efg",
+     "tov",
+     "orb",
+     "ftr"
+    ],
+    "title": "Ratings",
+    "description": "Tempo-free numbers for a stretch of play (see killshot/box.py)."
+   },
+   "Season": {
+    "properties": {
+     "team": {
+      "$ref": "#/components/schemas/Team"
+     },
+     "season": {
+      "type": "integer",
+      "title": "Season"
+     },
+     "exclude_garbage": {
+      "type": "boolean",
+      "title": "Exclude Garbage"
+     },
+     "totals": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Ratings"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "lineups": {
+      "items": {
+       "$ref": "#/components/schemas/Lineup"
+      },
+      "type": "array",
+      "title": "Lineups"
+     },
+     "on_off": {
+      "items": {
+       "$ref": "#/components/schemas/OnOff"
+      },
+      "type": "array",
+      "title": "On Off"
+     }
+    },
+    "type": "object",
+    "required": [
+     "team",
+     "season",
+     "exclude_garbage",
+     "totals",
+     "lineups",
+     "on_off"
+    ],
+    "title": "Season"
+   },
+   "Team": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name"
+    ],
+    "title": "Team"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "WinProbPoint": {
+    "properties": {
+     "t": {
+      "type": "integer",
+      "title": "T"
+     },
+     "clock": {
+      "type": "string",
+      "title": "Clock"
+     },
+     "win_prob": {
+      "type": "number",
+      "title": "Win Prob"
+     },
+     "pts": {
+      "type": "integer",
+      "title": "Pts"
+     },
+     "opp_pts": {
+      "type": "integer",
+      "title": "Opp Pts"
+     }
+    },
+    "type": "object",
+    "required": [
+     "t",
+     "clock",
+     "win_prob",
+     "pts",
+     "opp_pts"
+    ],
+    "title": "WinProbPoint"
+   }
+  }
+ }
+}

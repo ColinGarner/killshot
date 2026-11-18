@@ -83,3 +83,37 @@ def test_excluding_garbage_time_changes_the_season(api):
     full = api.get(f"/api/teams/{KANSAS}/seasons/2027").json()["totals"]
     competitive = api.get(f"/api/teams/{KANSAS}/seasons/2027", params={"exclude_garbage": True}).json()["totals"]
     assert competitive["minutes"] < full["minutes"]
+
+
+# --- serving the frontend (no database needed) -----------------------------------
+
+@pytest.fixture()
+def site(tmp_path, monkeypatch):
+    """The API serving a tiny stand-in for the built frontend."""
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<div id=root></div>")
+    (tmp_path / "assets" / "app-abc123.js").write_text("console.log('app')")
+    monkeypatch.setenv("WEB_DIST", str(tmp_path))
+    return TestClient(app)
+
+
+def test_page_urls_get_the_react_app(site):
+    for path in ("/", "/games", "/games/372750"):
+        r = site.get(path)
+        assert r.status_code == 200 and "id=root" in r.text, path
+
+
+def test_built_assets_are_served_and_cached_for_good(site):
+    r = site.get("/assets/app-abc123.js")
+    assert r.text == "console.log('app')"
+    assert "immutable" in r.headers["cache-control"]
+
+
+def test_unknown_api_paths_stay_404s_not_the_app(site):
+    r = site.get("/api/nope")
+    assert r.status_code == 404 and "id=root" not in r.text
+
+
+def test_files_outside_the_build_folder_are_never_served(site):
+    r = site.get("/..%2F..%2Fpyproject.toml")
+    assert "killshot" not in r.text  # falls back to the app, not the file

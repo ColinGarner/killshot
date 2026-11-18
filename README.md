@@ -21,6 +21,8 @@ Built for any team; ships with Kansas.
 | `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
 | `killshot/worker.py` | Runs forever: syncs schedules, saves each game after the final, within the API budget |
 | `killshot/api.py` | The web API: JSON for the frontend, plus `/healthz` |
+| `killshot/schemas.py` | The shape of every API response; the frontend's types are generated from these |
+| `web/` | The React frontend (Vite, TypeScript, Tailwind, Recharts) |
 | `killshot/reprocess.py` | Rebuilds every stored game from its saved raw data (no API calls) |
 | `killshot/inspect.py`, `killshot/season.py` | Print a game or a season from the command line |
 
@@ -44,6 +46,16 @@ psql "$DATABASE_URL" -c "SELECT sum(team_pts), sum(opp_pts) FROM stints WHERE te
 pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres tests
 ```
 
+### Frontend (`web/`, Node 26)
+
+```bash
+cd web
+npm ci
+npm run dev        # http://localhost:5173, with API calls forwarded to uvicorn on :8000
+npm run gen:api    # after changing an API response: regenerate the TypeScript types
+npm test && npm run build   # build output in web/dist, served by the API at http://localhost:8000
+```
+
 ## Roadmap
 
 1. Core library ✓
@@ -52,8 +64,8 @@ pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres
    - 2.2 CollegeBasketballData.com as the data source ✓
    - 2.3 Fill incomplete lineups from substitutions ✓
 3. Worker (schedule, finals) ✓
-4. **API** ← you are here
-6. Frontend
+4. API ✓
+6. **Frontend** ← you are here (6.1 Game log, 6.2 Season)
 7. Live games and mobile
 5. Railway deploy (everything at once, after 6 and 7)
 8. Garbage-time toggle, foul trouble, scouting

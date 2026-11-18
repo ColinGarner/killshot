@@ -254,7 +254,8 @@ def games_for_team(conn: psycopg.Connection, team_id: str, season: int | None = 
     cur = conn.execute(
         """SELECT g.id, g.start_at, g.state, g.status, g.neutral_site,
                   g.home_team_id, h.name AS home_name, g.away_team_id, a.name AS away_name,
-                  g.home_pts, g.away_pts, g.plays_saved_at IS NOT NULL AS has_plays
+                  g.home_pts, g.away_pts, g.plays_saved_at IS NOT NULL AS has_plays,
+                  coalesce((g.raw -> 'game' ->> 'startTimeTbd')::boolean, false) AS time_tbd
            FROM games g JOIN teams h ON h.id = g.home_team_id JOIN teams a ON a.id = g.away_team_id
            WHERE %(team)s IN (g.home_team_id, g.away_team_id)
              AND (%(season)s::int IS NULL OR g.season = %(season)s)
