@@ -21,6 +21,7 @@ Built for any team; ships with Kansas.
 | `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
 | `killshot/worker.py` | Runs forever: syncs schedules, saves each game after the final, within the API budget |
 | `killshot/api.py` | The web API: JSON for the frontend, plus `/healthz` |
+| `killshot/schemas.py` | The shape of every API response; the frontend's types are generated from these |
 | `killshot/reprocess.py` | Rebuilds every stored game from its saved raw data (no API calls) |
 | `killshot/inspect.py`, `killshot/season.py` | Print a game or a season from the command line |
 
