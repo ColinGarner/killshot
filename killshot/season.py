@@ -1,7 +1,7 @@
 """Print a team's season from the database: team ratings, top lineups, on/off.
 
-    python -m killshot.season --season 2026
-    python -m killshot.season --season 2026 --no-garbage
+    killshot season --season 2026
+    killshot season --season 2026 --no-garbage
 """
 import argparse
 import os

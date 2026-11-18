@@ -1,8 +1,8 @@
 """Print one game the way the dashboard shows it.
 
-    python -m killshot.inspect tests/fixtures/cbbd_372750.json.gz   # a saved game
-    python -m killshot.inspect 372750                               # fetch from CBBD (2 API calls)
-    python -m killshot.inspect 372750 --team 135                    # Kentucky's side
+    killshot inspect tests/fixtures/cbbd_372750.json.gz   # a saved game
+    killshot inspect 372750                               # fetch from CBBD (2 API calls)
+    killshot inspect 372750 --team 135                    # Kentucky's side
 """
 import argparse
 import gzip

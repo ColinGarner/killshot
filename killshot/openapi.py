@@ -1,6 +1,6 @@
 """Write the API's OpenAPI schema to a file, for generating the frontend's types.
 
-    python -m killshot.openapi web/openapi.json     (run by `npm run gen:api` in web/)
+    killshot openapi web/openapi.json     (run by `npm run gen:api` in web/)
 """
 import json
 import sys

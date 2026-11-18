@@ -232,3 +232,14 @@ waits on the network.
 **Why:** React Router applies URL changes as background transitions; a control
 driven only by the URL lagged about a second behind a tap until new data arrived.
 Found in the browser check of the Season page.
+
+## 28. One `killshot` command, `.env` for settings, no Docker locally
+**Decided:** `pip install -e .` installs a `killshot` command. `killshot start`
+creates and migrates the database, builds the site when its source changed, loads
+the last two seasons the first time, then runs the site and worker together until
+Ctrl-C. The other tools are subcommands (`killshot migrate`, `killshot load`, ...).
+Settings live in `.env` (git-ignored; `.env.sample` is committed), read by every
+command, with shell variables taking precedence. Local development runs natively:
+no Docker.
+**Why:** One obvious way to run it, and nothing to install beyond Python, Node and
+Postgres. The Dockerfile arrives with the Railway deploy, where it's needed.

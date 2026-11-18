@@ -10,6 +10,9 @@ dependencies = [
     "uvicorn[standard]>=0.27",   # the web server that runs the API
 ]
 
+[project.scripts]
+killshot = "killshot.cli:main"   # `pip install -e .` puts a `killshot` command on your PATH
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27"]  # httpx: FastAPI's test client uses it
 
