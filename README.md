@@ -17,6 +17,9 @@ Built for any team; ships with Kansas.
 | `killshot/rollup.py` | Adds stints up into lineups, on/off splits, team totals |
 | `killshot/events.py` | Win probability and killshots |
 | `killshot/game.py` | One game → stints, win probability, killshots, data checks |
+| `killshot/detail.py` | Puts a game page together (lineups, win probability, killshots), for finished and live games alike |
+| `killshot/live.py` | Builds the live game page from ESPN while a game is on |
+| `killshot/replay.py` | `killshot replay`: plays a finished game back through the live view, for testing |
 | `migrations/*.sql` | The Postgres schema, one numbered file per change |
 | `killshot/db.py` | All SQL: save a game, read a season's stints |
 | `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
@@ -57,6 +60,7 @@ The worker keeps new games coming in while it runs.
 | `killshot season --season 2026` | Print a season: ratings, lineups, on/off |
 | `killshot worker` | Run only the worker |
 | `killshot reprocess` | Rebuild stored games from their saved raw data (no API calls) |
+| `killshot replay 372750` | Play a finished game back as if live, about 80 seconds (`--speed 10` for slower) |
 
 Every command reads `.env`; a variable set in your shell wins over the file.
 
@@ -80,8 +84,8 @@ cd web && npm run gen:api       # after changing an API response: regenerate the
 6. Frontend ✓
 7. **Live games and mobile** ← you are here
    - 7a Run it locally with `killshot start` ✓
-   - 7.1 ESPN translator ← this PR
-   - 7.2 Live state and `killshot replay`
+   - 7.1 ESPN translator ✓
+   - 7.2 Live state and `killshot replay` ← this PR
    - 7.3 Worker polls live games
    - 7.4 API serves the live game
    - 7.5 Live game page

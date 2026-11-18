@@ -11,6 +11,7 @@
     killshot season ...     print a season
     killshot worker         run only the worker
     killshot reprocess      rebuild stored games from their saved raw data
+    killshot replay GAME    play a finished game back as if live (tests the live view)
     killshot openapi PATH   write the API schema (used by `npm run gen:api`)
 
 Settings come from .env in the repo folder (copy .env.sample to start).
@@ -30,7 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent  # the repo folder: .env, web/, mi
 
 # Subcommands that run an existing module's main(): `killshot load` -> killshot.load.main()
 TOOLS = {name: f"killshot.{name}" for name in
-         ("migrate", "load", "inspect", "season", "worker", "reprocess", "openapi")}
+         ("migrate", "load", "inspect", "season", "worker", "reprocess", "replay", "openapi")}
 
 
 def load_env(path: Path = ROOT / ".env") -> None:
@@ -202,7 +203,7 @@ def main(argv: list[str] | None = None) -> None:
         test(rest)
     elif name in TOOLS:
         asking_for_help = any(a in ("-h", "--help") for a in rest)
-        if name in ("migrate", "load", "season", "worker", "reprocess") and not asking_for_help:
+        if name in ("migrate", "load", "season", "worker", "reprocess", "replay") and not asking_for_help:
             require("DATABASE_URL")
         sys.argv = [f"killshot {name}", *rest]  # so each tool's --help shows the right name
         importlib.import_module(TOOLS[name]).main()

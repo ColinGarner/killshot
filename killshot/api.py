@@ -21,12 +21,11 @@ import psycopg
 from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 
-from . import db, rollup, schemas
-from .clock import label
-from .events import WinProbPoint
+from . import db, detail, rollup, schemas
+from .detail import game_summary, lineup_rows, player
+from .events import Run, WinProbPoint
 
 HEALTHY_HEARTBEAT = 30 * 60  # the worker wakes at least every 15 minutes; allow one missed pass
-GAME_MIN_POSS = 3            # possessions for a lineup to qualify in a single game
 
 app = FastAPI(title="killshot", description="Lineups, win probability and killshots for college basketball.")
 
@@ -48,38 +47,6 @@ def require_team(team_id: str, conn: psycopg.Connection) -> str:
     if team_id not in teams:
         raise HTTPException(404, f"team {team_id} isn't tracked")
     return teams[team_id]
-
-
-def game_summary(row: dict, team_id: str) -> dict:
-    """One games-table row, turned around to the requested team's side."""
-    home = row["home_team_id"] == team_id
-    pts, opp_pts = (row["home_pts"], row["away_pts"]) if home else (row["away_pts"], row["home_pts"])
-    if row["state"] == "pre":
-        pts = opp_pts = None  # CBBD sends 0-0 for games not yet played
-    final = row["state"] == "post" and pts is not None and opp_pts is not None
-    return {
-        "id": row["id"],
-        "start_at": row["start_at"].isoformat(),
-        "time_tbd": row["time_tbd"],
-        "state": row["state"],                  # "pre", "in" or "post"
-        "status": row["status"],
-        "venue": "neutral" if row["neutral_site"] else ("home" if home else "away"),
-        "opponent": {"id": row["away_team_id"] if home else row["home_team_id"],
-                     "name": row["away_name"] if home else row["home_name"]},
-        "pts": pts,
-        "opp_pts": opp_pts,
-        "result": ("W" if pts > opp_pts else "L") if final else None,
-        "has_plays": row["has_plays"],          # False until CBBD publishes play-by-play after the final
-    }
-
-
-def player(people: dict[str, dict], player_id: str) -> dict:
-    return people.get(player_id, {"id": player_id, "name": player_id, "short_name": player_id})
-
-
-def lineup_rows(rows: list[dict], people: dict[str, dict]) -> list[dict]:
-    """Replace player ids with {id, name, short_name}, for display."""
-    return [{**r, "players": [player(people, p) for p in r.pop("player_ids")]} for r in rows]
 
 
 # --- routes --------------------------------------------------------------------
@@ -114,24 +81,12 @@ def game(team_id: str, game_id: str, conn: psycopg.Connection = Depends(get_conn
     if not rows:
         raise HTTPException(404, f"game {game_id} not found for team {team_id}")
     row = rows[0]
-    summary = game_summary(row, team_id)
     home = row["home_team_id"] == team_id
-    people = db.players(conn)
-
-    best, worst = rollup.best_and_worst(rollup.lineups(db.stints_for(conn, team_id, game_id=game_id)),
-                                        min_poss=GAME_MIN_POSS)
-    win_prob = [WinProbPoint(*r).for_team(home) for r in db.win_prob_for_game(conn, game_id)]
-
-    killshots = []
-    for team, pts, t0, t1, home0, away0, home1, away1 in db.runs_for_game(conn, game_id):
-        before, after = ((home0, away0), (home1, away1)) if home else ((away0, home0), (away1, home1))
-        killshots.append({"by": "team" if team == team_id else "opponent", "label": f"{pts}-0", "pts": pts,
-                          "start": label(t0), "end": label(t1), "t0": t0, "t1": t1,
-                          "score_before": list(before), "score_after": list(after)})
-
-    return {"game": summary, "min_poss": GAME_MIN_POSS,
-            "lineups": {"best": lineup_rows(best, people), "worst": lineup_rows(worst, people)},
-            "win_prob": win_prob, "killshots": killshots}
+    return detail.build(game_summary(row, team_id), team_id, home,
+                        stints=db.stints_for(conn, team_id, game_id=game_id),
+                        win_prob=[WinProbPoint(*r) for r in db.win_prob_for_game(conn, game_id)],
+                        runs=[Run(*r) for r in db.runs_for_game(conn, game_id)],
+                        people=db.players(conn))
 
 
 @app.get("/api/teams/{team_id}/seasons/{season}")
