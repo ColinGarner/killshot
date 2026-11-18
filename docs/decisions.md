@@ -68,3 +68,14 @@ match the final score or a player's minutes are off by more than 1.5.
 **Known cases (2025-26):** at Duke (one player off by 3.3 minutes) and Houston
 at Kansas (15 seconds with the wrong number of players, losing one KU point).
 Both come from gaps in ESPN's substitution data.
+
+## 10. Migrations are forward-only, locked, and never edited after they run
+**Decided:** Schema changes are new numbered files only (rules in
+`migrations/README.md`). A migration run is one transaction holding a Postgres
+advisory lock. A test requires file numbers to be 001, 002, 003... with no
+gaps or repeats.
+**Why:** On Railway, the web service and the worker can both start at once.
+Without the lock, two simultaneous runs crashed trying to create the same
+table (reproduced while building this). Editing an applied file would leave
+local and production databases silently different.
+**Gave up:** Undo ("down") migrations. Reversals are new forward files.
