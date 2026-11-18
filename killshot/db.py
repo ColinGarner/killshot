@@ -3,6 +3,7 @@
 The SQL lives here in plain sight. Other modules hand this one `Game` objects
 to save, and get `Stint` objects back to feed into `rollup`.
 """
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -303,3 +304,28 @@ def worker_heartbeat_age(conn: psycopg.Connection) -> tuple[float | None, str | 
     """Seconds since the worker's last heartbeat, and its last note. (None, None) if it never ran."""
     row = conn.execute("SELECT extract(epoch FROM now() - heartbeat_at), note FROM worker_status WHERE id = 1").fetchone()
     return (float(row[0]), row[1]) if row else (None, None)
+
+
+# --- live games ------------------------------------------------------------------
+
+def espn_id(conn: psycopg.Connection, game_id: str) -> str | None:
+    """ESPN's event id for one of our games (CBBD lists it as sourceId)."""
+    row = conn.execute("SELECT raw -> 'game' ->> 'sourceId' FROM games WHERE id = %s", (game_id,)).fetchone()
+    return row[0] if row else None
+
+
+def save_live(conn: psycopg.Connection, game_id: str, team_id: str, payload: dict) -> None:
+    conn.execute(
+        """INSERT INTO live_state (game_id, team_id, payload) VALUES (%s, %s, %s)
+           ON CONFLICT (game_id, team_id) DO UPDATE SET payload = EXCLUDED.payload, updated_at = now()""",
+        (game_id, team_id, json.dumps(payload)))
+
+
+def live_page(conn: psycopg.Connection, game_id: str, team_id: str) -> tuple[dict, dt.datetime] | None:
+    """(the live game page, when it was saved), or None if the game isn't live."""
+    return conn.execute("SELECT payload, updated_at FROM live_state WHERE game_id = %s AND team_id = %s",
+                        (game_id, team_id)).fetchone()
+
+
+def clear_live(conn: psycopg.Connection, game_id: str) -> None:
+    conn.execute("DELETE FROM live_state WHERE game_id = %s", (game_id,))
