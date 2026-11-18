@@ -23,7 +23,7 @@ Built for any team; ships with Kansas.
 | `migrations/*.sql` | The Postgres schema, one numbered file per change |
 | `killshot/db.py` | All SQL: save a game, read a season's stints |
 | `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
-| `killshot/worker.py` | Runs forever: syncs schedules, saves each game after the final, within the API budget |
+| `killshot/worker.py` | Runs forever: syncs schedules, reads ESPN every 30 s during games, saves each game after the final, within the API budget |
 | `killshot/api.py` | The web API: JSON for the frontend, plus `/healthz` |
 | `killshot/schemas.py` | The shape of every API response; the frontend's types are generated from these |
 | `web/` | The React frontend (Vite, TypeScript, Tailwind, Recharts) |
@@ -85,8 +85,8 @@ cd web && npm run gen:api       # after changing an API response: regenerate the
 7. **Live games and mobile** ← you are here
    - 7a Run it locally with `killshot start` ✓
    - 7.1 ESPN translator ✓
-   - 7.2 Live state and `killshot replay` ← this PR
-   - 7.3 Worker polls live games
+   - 7.2 Live state and `killshot replay` ✓
+   - 7.3 Worker polls live games ← this PR
    - 7.4 API serves the live game
    - 7.5 Live game page
    - 7.6 Phone layout and Add to Home Screen
