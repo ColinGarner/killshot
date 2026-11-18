@@ -65,7 +65,7 @@ npm test && npm run build   # build output in web/dist, served by the API at htt
    - 2.3 Fill incomplete lineups from substitutions ✓
 3. Worker (schedule, finals) ✓
 4. API ✓
-6. **Frontend** ← you are here
+6. **Frontend** ← you are here (6.1 Game log; 6.2 Season next)
 7. Live games and mobile
 5. Railway deploy (everything at once, after 6 and 7)
 8. Garbage-time toggle, foul trouble, scouting

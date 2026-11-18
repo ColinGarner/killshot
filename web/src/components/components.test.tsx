@@ -1,0 +1,39 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import type { Killshot, Lineup } from "../api/client";
+import { Killshots } from "./Killshots";
+import { LineupTable } from "./LineupTable";
+
+const player = (id: string, name: string, short_name: string) => ({ id, name, short_name });
+const lineup: Lineup = {
+  players: [player("1", "Leroy Blyden Jr.", "Blyden"), player("2", "Keanu Dawes", "Dawes"), player("3", "Taylen Kinney", "Kinney"),
+    player("4", "Tyran Stokes", "Stokes"), player("5", "Tre White", "White")],
+  stints: 2, minutes: 3.5, poss: 5.2, pts: 14, opp_pts: 6, plus_minus: 8, ortg: 269.2, drtg: 115.4, net: 154.2,
+  efg: 0.7, opp_efg: 0.4, tov: 0.1, orb: 0.3, ftr: 0.2,
+};
+
+describe("LineupTable", () => {
+  it("shows each lineup with its plus-minus and net rating", () => {
+    render(<LineupTable lineups={[lineup]} empty="none" />);
+    // Testing Library reads non-breaking spaces as ordinary ones.
+    expect(screen.getByText("Blyden · Dawes · Kinney · Stokes · White")).toBeTruthy();
+    expect(screen.getByText("+154.2")).toBeTruthy();
+    expect(screen.getByText("+8")).toBeTruthy();
+  });
+
+  it("says so when no lineup qualifies", () => {
+    render(<LineupTable lineups={[]} empty="No lineup played 3+ possessions." />);
+    expect(screen.getByText("No lineup played 3+ possessions.")).toBeTruthy();
+  });
+});
+
+describe("Killshots", () => {
+  it("shows the run, who made it, when, and the score swing", () => {
+    const shot: Killshot = { by: "team", label: "12-0", pts: 12, start: "2nd 18:35", end: "2nd 15:00", t0: 1285, t1: 1500,
+      score_before: [51, 41], score_after: [63, 41] };
+    render(<Killshots killshots={[shot]} opponent="Kentucky" />);
+    expect(screen.getByText("12-0")).toBeTruthy();
+    expect(screen.getByText("2nd 18:35 to 2nd 15:00")).toBeTruthy();
+    expect(screen.getByText("51-41 → 63-41")).toBeTruthy();
+  });
+});
