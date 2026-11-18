@@ -58,12 +58,26 @@ def run(*args: str, cwd: Path = ROOT) -> None:
         sys.exit(f"Failed: {' '.join(args)}")
 
 
+def require_node() -> None:
+    """Stop early, with a clear fix, if Node is missing or older than web/.nvmrc asks for."""
+    wanted = int((ROOT / "web" / ".nvmrc").read_text().strip())
+    try:
+        version = subprocess.run(["node", "--version"], capture_output=True, text=True).stdout.strip()
+    except FileNotFoundError:
+        sys.exit(f"Node isn't installed. The site needs Node {wanted}: "
+                 f"`nvm install {wanted}`, or `brew install node@{wanted}`.")
+    if int(version.lstrip("v").split(".")[0]) < wanted:
+        sys.exit(f"The site needs Node {wanted}, but this terminal has {version}. "
+                 f"With nvm: `cd web && nvm install && nvm use`. Or `brew install node@{wanted}`.")
+
+
 def build_site_if_needed() -> None:
     """Build the React site the first time, or when its source is newer than the last build."""
     web, built = ROOT / "web", ROOT / "web" / "dist" / "index.html"
     sources = [p for p in (web / "src").rglob("*") if p.is_file()] + [web / "package.json", web / "index.html"]
     if built.exists() and built.stat().st_mtime >= max(p.stat().st_mtime for p in sources):
         return
+    require_node()
     print("Building the site (web/)...")
     if not (web / "node_modules").exists():
         run("npm", "ci", "--no-audit", "--no-fund", cwd=web)
@@ -162,6 +176,7 @@ def test(args: list[str]) -> None:
         results["Python"] = subprocess.run([sys.executable, "-m", "pytest", *extra], cwd=ROOT).returncode == 0
     if "web" in suites:
         web = ROOT / "web"
+        require_node()
         if not (web / "node_modules").exists():
             run("npm", "ci", "--no-audit", "--no-fund", cwd=web)
         npm_args = ["npm", "test", *(["--", *extra] if suites == ["web"] and extra else [])]

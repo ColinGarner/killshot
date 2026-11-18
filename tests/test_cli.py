@@ -57,3 +57,12 @@ def test_the_tests_never_run_against_the_real_database(monkeypatch):
     with pytest.raises(SystemExit) as stop:
         cli.check_test_database()
     assert "separate" in str(stop.value)
+
+
+def test_an_old_node_gets_a_clear_fix(monkeypatch):
+    class OldNode:
+        stdout = "v22.13.0\n"
+    monkeypatch.setattr(cli.subprocess, "run", lambda *a, **k: OldNode())
+    with pytest.raises(SystemExit) as stop:
+        cli.require_node()
+    assert "Node 26" in str(stop.value) and "v22.13.0" in str(stop.value) and "nvm" in str(stop.value)
