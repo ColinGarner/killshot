@@ -1,6 +1,6 @@
 """Rebuild every stored game from its saved raw data, with the current code.
 
-    python -m killshot.reprocess
+    killshot reprocess
 
 Run it after a change to how stints, ratings or killshots are worked out.
 Makes no API calls: it reads `games.raw`, which holds the provider's original data.

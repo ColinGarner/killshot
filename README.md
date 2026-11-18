@@ -24,36 +24,46 @@ Built for any team; ships with Kansas.
 | `killshot/schemas.py` | The shape of every API response; the frontend's types are generated from these |
 | `web/` | The React frontend (Vite, TypeScript, Tailwind, Recharts) |
 | `killshot/reprocess.py` | Rebuilds every stored game from its saved raw data (no API calls) |
+| `killshot/cli.py` | The `killshot` command: `start`, `migrate` and the tools below |
 | `killshot/inspect.py`, `killshot/season.py` | Print a game or a season from the command line |
 
 Choices behind the code are in [`docs/decisions.md`](docs/decisions.md).
 
-## Try it
+## Run it locally
+
+You need Python 3.11+, Node 26 and Postgres 16 (Postgres.app or `brew install postgresql@16`).
 
 ```bash
-pip install -e ".[dev]"
-python -m killshot.inspect tests/fixtures/cbbd_372750.json.gz  # KU 89, Kentucky 69, no database or API key needed
-
-docker compose up -d db                                         # local Postgres
-export DATABASE_URL=postgresql://killshot:killshot@localhost:5432/killshot
-export CBBD_API_KEY=...                                         # your CollegeBasketballData.com key
-python -m killshot.load --team Kansas --seasons 2026 2027       # ~40 games, ~41 API calls
-python -m killshot.season --season 2026                         # team ratings, lineups, on/off
-python -m killshot.worker --once                                # one worker pass; drop --once to run forever
-uvicorn killshot.api:app --reload                               # the API; browse http://localhost:8000/docs
-psql "$DATABASE_URL" -c "SELECT sum(team_pts), sum(opp_pts) FROM stints WHERE team_id = '131'"
-
-pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres tests
+pip install -e ".[dev]"        # once: installs the `killshot` command
+cp .env.sample .env            # once: then add your CollegeBasketballData key to .env
+killshot start                 # http://localhost:8000 — Ctrl-C to stop
 ```
 
-### Frontend (`web/`, Node 26)
+The first `killshot start` creates the database, builds the site and loads Kansas's
+last two seasons (about 40 API calls). After that it starts in a couple of seconds.
+The worker keeps new games coming in while it runs.
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `killshot start` | Migrate, build the site if it changed, then run the site and worker |
+| `killshot migrate` | Create the database if needed and apply migrations |
+| `killshot load --team Kansas --seasons 2026 2027` | Load a team's finished games from CBBD |
+| `killshot inspect 372750` | Print one game (a CBBD id, or a saved file in `tests/fixtures/`) |
+| `killshot season --season 2026` | Print a season: ratings, lineups, on/off |
+| `killshot worker` | Run only the worker |
+| `killshot reprocess` | Rebuild stored games from their saved raw data (no API calls) |
+
+Every command reads `.env`; a variable set in your shell wins over the file.
+
+### Developing
 
 ```bash
-cd web
-npm ci
-npm run dev        # http://localhost:5173, with API calls forwarded to uvicorn on :8000
-npm run gen:api    # after changing an API response: regenerate the TypeScript types
-npm test && npm run build   # build output in web/dist, served by the API at http://localhost:8000
+pytest                          # set TEST_DATABASE_URL to a throwaway database to include Postgres tests
+cd web && npm run dev           # live-reloading site on :5173 (run `killshot start` alongside for the API)
+cd web && npm run gen:api       # after changing an API response: regenerate the TypeScript types
+cd web && npm test
 ```
 
 ## Roadmap
@@ -65,7 +75,7 @@ npm test && npm run build   # build output in web/dist, served by the API at htt
    - 2.3 Fill incomplete lineups from substitutions ✓
 3. Worker (schedule, finals) ✓
 4. API ✓
-6. **Frontend** ← you are here (6.1 Game log, 6.2 Season)
-7. Live games and mobile
+6. Frontend ✓
+7. **Live games and mobile** ← you are here (7a: run it locally with `killshot start`)
 5. Railway deploy (everything at once, after 6 and 7)
 8. Garbage-time toggle, foul trouble, scouting

@@ -1,6 +1,6 @@
 """Load a team's finished games from CollegeBasketballData.com into Postgres.
 
-    python -m killshot.load --team Kansas --seasons 2026 2027
+    killshot load --team Kansas --seasons 2026 2027
 
 Uses one API call per season plus one per new game. Safe to re-run: games
 already saved as final are skipped unless you pass --refresh.

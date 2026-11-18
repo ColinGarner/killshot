@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import psycopg
+import psycopg.sql
 
 from .box import Box
 from .game import Game
@@ -20,6 +21,26 @@ def connect(url: str) -> psycopg.Connection:
     """Open a connection in autocommit mode: each statement saves immediately,
     except inside `with conn.transaction():`, where a group saves all together."""
     return psycopg.connect(url, autocommit=True)
+
+
+def ensure_database(url: str) -> bool:
+    """Create the database named in `url` if it doesn't exist yet. Returns True if it was created.
+
+    Connects to the server's built-in `postgres` database to do it, so a fresh
+    local Postgres needs no manual `createdb`.
+    """
+    info = psycopg.conninfo.conninfo_to_dict(url)
+    name = info.get("dbname")
+    try:
+        psycopg.connect(url).close()
+        return False
+    except psycopg.OperationalError as e:
+        if not name or "does not exist" not in str(e):
+            raise  # Postgres isn't running, or the login is wrong: nothing to create
+    admin = psycopg.conninfo.make_conninfo(url, dbname="postgres")
+    with psycopg.connect(admin, autocommit=True) as conn:
+        conn.execute(psycopg.sql.SQL("CREATE DATABASE {}").format(psycopg.sql.Identifier(name)))
+    return True
 
 
 def count_api_call(conn: psycopg.Connection) -> None:

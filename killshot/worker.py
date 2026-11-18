@@ -1,7 +1,7 @@
 """The worker: keeps the database up to date with nobody running commands.
 
-    python -m killshot.worker          # run forever (what Railway will run)
-    python -m killshot.worker --once   # one pass, then exit (handy for testing)
+    killshot worker          # run forever (what Railway will run)
+    killshot worker --once   # one pass, then exit (handy for testing)
 
 Each pass of the loop:
 1. Refreshes each tracked team's schedule from CBBD (every 10 minutes around a
@@ -150,7 +150,7 @@ def main() -> None:
 
     stopping = False
 
-    def stop(signum, frame):  # Railway sends SIGTERM before replacing the service
+    def stop(signum, frame):  # Ctrl-C, or Railway's SIGTERM before replacing the service
         nonlocal stopping
         stopping = True
         log("stopping after this pass")
@@ -173,9 +173,9 @@ def main() -> None:
                 break
             log(f"next pass in {wait / 60:.0f} min")
             slept = 0.0
-            while slept < wait and not stopping:  # sleep in short steps so SIGTERM is quick
-                time.sleep(min(5, wait - slept))
-                slept += 5
+            while slept < wait and not stopping:  # sleep in 1-second steps so stopping is quick
+                time.sleep(min(1, wait - slept))
+                slept += 1
 
 
 if __name__ == "__main__":
