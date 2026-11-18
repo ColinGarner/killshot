@@ -32,6 +32,7 @@ Choices behind the code are in [`docs/decisions.md`](docs/decisions.md).
 ## Run it locally
 
 You need Python 3.11+, Node 26 and Postgres 16 (Postgres.app or `brew install postgresql@16`).
+Node is pinned in `.tool-versions` (asdf: `asdf install`) and `web/.nvmrc` (nvm: `nvm install`).
 
 ```bash
 pip install -e ".[dev]"        # once: installs the `killshot` command

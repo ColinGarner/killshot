@@ -68,7 +68,8 @@ def require_node() -> None:
                  f"`nvm install {wanted}`, or `brew install node@{wanted}`.")
     if int(version.lstrip("v").split(".")[0]) < wanted:
         sys.exit(f"The site needs Node {wanted}, but this terminal has {version}. "
-                 f"With nvm: `cd web && nvm install && nvm use`. Or `brew install node@{wanted}`.")
+                 f"With asdf: `asdf install`. With nvm: `cd web && nvm install && nvm use`. "
+                 f"Or `brew install node@{wanted}`.")
 
 
 def build_site_if_needed() -> None:
