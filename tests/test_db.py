@@ -11,16 +11,7 @@ import pytest
 from killshot import db, rollup
 from conftest import FORDHAM, KANSAS, KENTUCKY, KENTUCKY_TEAM, MTSU, UNLV, load_data
 
-URL = os.environ.get("TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
-
-
-@pytest.fixture()
-def conn():
-    with db.connect(URL) as c:
-        c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-        db.migrate(c)
-        yield c
+pytestmark = pytest.mark.skipif(not os.environ.get("TEST_DATABASE_URL"), reason="TEST_DATABASE_URL not set")
 
 
 def test_migrations_run_once(conn):
