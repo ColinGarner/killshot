@@ -310,7 +310,8 @@ def worker_heartbeat_age(conn: psycopg.Connection) -> tuple[float | None, str | 
 
 def espn_id(conn: psycopg.Connection, game_id: str) -> str | None:
     """ESPN's event id for one of our games (CBBD lists it as sourceId)."""
-    row = conn.execute("SELECT raw -> 'game' ->> 'sourceId' FROM games WHERE id = %s", (game_id,)).fetchone()
+    row = conn.execute("SELECT coalesce(espn_id, raw -> 'game' ->> 'sourceId') FROM games WHERE id = %s",
+                       (game_id,)).fetchone()
     return row[0] if row else None
 
 
@@ -329,3 +330,33 @@ def live_page(conn: psycopg.Connection, game_id: str, team_id: str) -> tuple[dic
 
 def clear_live(conn: psycopg.Connection, game_id: str) -> None:
     conn.execute("DELETE FROM live_state WHERE game_id = %s", (game_id,))
+
+
+def games_to_watch(conn: psycopg.Connection, team_names: list[str], minutes_before: float,
+                   hours_after: float) -> list[tuple[str, str | None, str]]:
+    """Tracked teams' games to poll ESPN for: starting within `minutes_before`, or
+    started within `hours_after` and not yet final on ESPN or saved from CBBD.
+    Returns (game id, ESPN event id, tracked team id) rows; a game with two
+    tracked teams appears twice."""
+    return conn.execute(
+        """SELECT g.id, coalesce(g.espn_id, g.raw -> 'game' ->> 'sourceId'), t.id
+           FROM games g JOIN teams t ON t.id IN (g.home_team_id, g.away_team_id)
+           WHERE t.name = ANY(%s) AND g.plays_saved_at IS NULL
+             AND g.start_at BETWEEN now() - make_interval(hours => %s) AND now() + make_interval(mins => %s)
+             AND NOT EXISTS (SELECT 1 FROM live_state l
+                             WHERE l.game_id = g.id AND l.payload -> 'game' ->> 'state' = 'post')
+           ORDER BY g.start_at, t.id""", (team_names, hours_after, minutes_before)).fetchall()
+
+
+def seconds_until_next_tip(conn: psycopg.Connection, team_names: list[str]) -> float | None:
+    """Seconds until the next tracked game's tip-off, or None if none is scheduled."""
+    row = conn.execute(
+        """SELECT extract(epoch FROM min(g.start_at) - now()) FROM games g
+           JOIN teams t ON t.id IN (g.home_team_id, g.away_team_id)
+           WHERE t.name = ANY(%s) AND g.start_at > now()""", (team_names,)).fetchone()
+    return float(row[0]) if row and row[0] is not None else None
+
+
+def live_pages(conn: psycopg.Connection, game_id: str) -> dict[str, dict]:
+    """Team id -> live page, for every tracked team's live row of one game."""
+    return dict(conn.execute("SELECT team_id, payload FROM live_state WHERE game_id = %s", (game_id,)).fetchall())
