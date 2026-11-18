@@ -1,5 +1,24 @@
-# Local Postgres for development:  docker compose up -d db
-# Then: export DATABASE_URL=postgresql://killshot:killshot@localhost:5432/killshot
+# The whole app on your machine:
+#
+#   cp .env.example .env              # then put your CollegeBasketballData key in .env
+#   docker compose up --build         # Postgres + web (http://localhost:8000) + worker
+#
+# Just the database, for running the Python code directly:
+#   docker compose up -d db
+#   export DATABASE_URL=postgresql://killshot:killshot@localhost:5432/killshot
+
+x-app: &app
+  build: .
+  image: killshot:local
+  env_file:
+    - path: .env
+      required: false   # the site runs without it; the worker needs CBBD_API_KEY from it
+  environment:
+    DATABASE_URL: postgresql://killshot:killshot@db:5432/killshot
+  depends_on:
+    db:
+      condition: service_healthy
+
 services:
   db:
     image: postgres:16
@@ -11,5 +30,21 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U killshot"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  web:
+    <<: *app
+    ports:
+      - "8000:8000"
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "killshot.worker"]
+    restart: unless-stopped
+
 volumes:
   pgdata:
