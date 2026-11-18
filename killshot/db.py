@@ -328,6 +328,12 @@ def live_page(conn: psycopg.Connection, game_id: str, team_id: str) -> tuple[dic
                         (game_id, team_id)).fetchone()
 
 
+def live_games(conn: psycopg.Connection, team_id: str) -> dict[str, dict]:
+    """Game id -> the live page's game summary, for every live game of one team."""
+    return dict(conn.execute("SELECT game_id, payload -> 'game' FROM live_state WHERE team_id = %s",
+                             (team_id,)).fetchall())
+
+
 def clear_live(conn: psycopg.Connection, game_id: str) -> None:
     conn.execute("DELETE FROM live_state WHERE game_id = %s", (game_id,))
 

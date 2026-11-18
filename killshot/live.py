@@ -39,7 +39,7 @@ def build(row: dict, team_id: str, espn_game: Game, now: dt.datetime | None = No
     them = espn_game.opponent(us.id)
 
     summary = detail.game_summary(row, team_id)
-    summary.update(state=espn_game.state, status=espn_game.status, pts=us.score, opp_pts=them.score,
+    summary.update(live=True, state=espn_game.state, status=espn_game.status, pts=us.score, opp_pts=them.score,
                    result=("W" if us.score > them.score else "L") if espn_game.state == "post" else None)
 
     people = {pid: {"id": pid, "name": p.name, "short_name": p.short_name} for pid, p in espn_game.players.items()}

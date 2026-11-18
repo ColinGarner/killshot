@@ -86,8 +86,8 @@ cd web && npm run gen:api       # after changing an API response: regenerate the
    - 7a Run it locally with `killshot start` ✓
    - 7.1 ESPN translator ✓
    - 7.2 Live state and `killshot replay` ✓
-   - 7.3 Worker polls live games ← this PR
-   - 7.4 API serves the live game
+   - 7.3 Worker polls live games ✓
+   - 7.4 API serves the live game ← this PR
    - 7.5 Live game page
    - 7.6 Phone layout and Add to Home Screen
 5. Railway deploy (everything at once, after 6 and 7)

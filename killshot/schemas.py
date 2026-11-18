@@ -56,6 +56,7 @@ class GameSummary(BaseModel):
     opp_pts: int | None
     result: Literal["W", "L"] | None
     has_plays: bool        # False until CBBD publishes play-by-play after the final
+    live: bool = False     # the score and state are from ESPN's live feed (see GameDetail.live)
 
 
 class WinProbPoint(BaseModel):
@@ -83,12 +84,20 @@ class GameLineups(BaseModel):
     worst: list[Lineup]
 
 
+class Live(BaseModel):
+    """Only while a game is on (and until CBBD's official record replaces it after the final)."""
+    updated_at: str        # ISO time, UTC, when the worker last read ESPN
+    clock: str | None      # "2nd 12:41"; None before the first play
+    on_floor: list[Player] # this team's five right now
+
+
 class GameDetail(BaseModel):
     game: GameSummary
     min_poss: int          # possessions a lineup needs to be listed
     lineups: GameLineups
     win_prob: list[WinProbPoint]
     killshots: list[Killshot]
+    live: Live | None = None  # set while the page is built from ESPN's live feed
 
 
 class OnOff(BaseModel):

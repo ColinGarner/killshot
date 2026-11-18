@@ -50,7 +50,8 @@ export interface paths {
         };
         /**
          * Games
-         * @description The schedule and results for a season, oldest first.
+         * @description The schedule and results for a season, oldest first. A game that is on shows
+         *     its live score and state, from the live page the worker saves every 30 seconds.
          */
         get: operations["games_api_teams__team_id__games_get"];
         put?: never;
@@ -71,6 +72,9 @@ export interface paths {
         /**
          * Game
          * @description One game: best and worst lineups, win probability over time, and killshots.
+         *
+         *     While the game is on (and until CBBD's official record arrives after the
+         *     final), this is the live page the worker built from ESPN, with a `live` block.
          */
         get: operations["game_api_teams__team_id__games__game_id__get"];
         put?: never;
@@ -115,6 +119,7 @@ export interface components {
             win_prob: components["schemas"]["WinProbPoint"][];
             /** Killshots */
             killshots: components["schemas"]["Killshot"][];
+            live?: components["schemas"]["Live"] | null;
         };
         /** GameLineups */
         GameLineups: {
@@ -152,6 +157,11 @@ export interface components {
             result: ("W" | "L") | null;
             /** Has Plays */
             has_plays: boolean;
+            /**
+             * Live
+             * @default false
+             */
+            live: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -225,6 +235,18 @@ export interface components {
             players: components["schemas"]["Player"][];
             /** Stints */
             stints: number;
+        };
+        /**
+         * Live
+         * @description Only while a game is on (and until CBBD's official record replaces it after the final).
+         */
+        Live: {
+            /** Updated At */
+            updated_at: string;
+            /** Clock */
+            clock: string | null;
+            /** On Floor */
+            on_floor: components["schemas"]["Player"][];
         };
         /** OnOff */
         OnOff: {

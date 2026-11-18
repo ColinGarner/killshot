@@ -117,3 +117,41 @@ def test_unknown_api_paths_stay_404s_not_the_app(site):
 def test_files_outside_the_build_folder_are_never_served(site):
     r = site.get("/..%2F..%2Fpyproject.toml")
     assert "killshot" not in r.text  # falls back to the app, not the file
+
+
+# --- live games --------------------------------------------------------------
+
+from killshot import live  # noqa: E402
+from killshot.sources import espn  # noqa: E402
+from test_espn_translation import ESPN_IDS, load_espn  # noqa: E402
+
+
+def go_live(conn, n_plays: int) -> None:
+    """Save Kentucky's live page as the worker would, after `n_plays` plays."""
+    (row,) = db.games_for_team(conn, KANSAS, game_id=KENTUCKY)
+    game = espn.to_game(live.snapshot(load_espn(ESPN_IDS[KENTUCKY]), n_plays))
+    db.save_live(conn, KENTUCKY, KANSAS, live.build(row, KANSAS, game))
+
+
+def test_a_live_game_page_comes_from_the_live_feed(api, conn):
+    go_live(conn, 250)
+    g = api.get(f"/api/teams/{KANSAS}/games/{KENTUCKY}").json()
+    assert g["game"]["live"] and g["game"]["state"] == "in" and g["game"]["result"] is None
+    assert g["live"]["clock"].startswith(("1st", "2nd")) and len(g["live"]["on_floor"]) == 5
+    assert g["live"]["updated_at"]
+    assert g["game"]["pts"] < 89  # the score so far, not the final
+
+
+def test_the_game_list_shows_the_live_score(api, conn):
+    go_live(conn, 250)
+    games = api.get(f"/api/teams/{KANSAS}/games", params={"season": 2027}).json()
+    kentucky, others = games[2], games[:2] + games[3:]
+    assert kentucky["live"] and kentucky["state"] == "in" and kentucky["pts"] < 89
+    assert not any(g["live"] for g in others)
+
+
+def test_once_the_live_page_is_cleared_the_official_page_returns(api, conn):
+    go_live(conn, 250)
+    db.clear_live(conn, KENTUCKY)
+    g = api.get(f"/api/teams/{KANSAS}/games/{KENTUCKY}").json()
+    assert g["live"] is None and not g["game"]["live"] and g["game"]["pts"] == 89
