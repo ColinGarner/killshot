@@ -79,3 +79,54 @@ Without the lock, two simultaneous runs crashed trying to create the same
 table (reproduced while building this). Editing an applied file would leave
 local and production databases silently different.
 **Gave up:** Undo ("down") migrations. Reversals are new forward files.
+
+## 11. CollegeBasketballData.com is the only data source
+**Decided:** All data (history, finals, schedule and, later, live) comes from
+CollegeBasketballData.com (CBBD) on Tier 1 ($1/month, 5,000 calls). ESPN's
+undocumented API is gone from the code.
+**Why:** A documented, paid API is more dependable than ESPN's and is fine to
+build a site on. CBBD lists the ten players on the floor with every play and
+includes win probability, so lineups no longer have to be rebuilt from
+substitutions. One source means one set of ids and nothing to keep in sync.
+**Gave up:** ESPN's win-probability model (CBBD has its own) and ESPN as a
+backup. If CBBD's play-by-play turns out not to update during games, the Live
+tab shows score and clock only until the final; we'll decide then.
+
+## 12. Our ratings math, not CBBD's lineup ratings
+**Decided:** We build stints and ratings ourselves from CBBD's plays, and don't
+use CBBD's `/lineups` ratings.
+**Why:** CBBD counts possessions separately for each team, which can come out
+very uneven. For KU's starting five vs. Kentucky it credits KU with 26
+possessions and Kentucky with 38 over the same 17 minutes, which makes the net
+rating +63.4. Teams alternate possessions, so we average both sides' estimates
+(decision 4): +26.6 on ESPN data, +20.8 on CBBD's plays.
+
+## 13. Provider quirks stay in the translator
+**Decided:** `sources/cbbd.py` turns CBBD plays into our own `Play` format
+(`killshot/plays.py`). Stints and events read only `Play` objects.
+**Quirks handled there:** every free throw is labeled `MadeFreeThrow`, even
+misses (we use `scoringPlay`); the on-floor list names teams but not team ids.
+**Why:** A CBBD format change touches one file, and the basketball code stays
+readable without provider vocabulary.
+
+## 14. Win probability is optional
+**Decided:** A game without win probability loads normally, with an empty chart
+and `has_win_prob = False`; the loader flags it.
+**Why:** CBBD has none for 9 of KU's 35 games in 2025-26, mostly February and
+March (e.g. Houston at Kansas, the St. John's tournament game).
+
+## 15. Known CBBD lineup gaps are flagged and left out of ratings
+**Decided:** Plays where CBBD doesn't list exactly five players for a team count
+toward nothing. The loader flags those games. About 1.3% of 2025-26 game time.
+**Known cases (2025-26):** the first two games (Green Bay, at North Carolina)
+list nobody at tip-off, then only players who have subbed in, so roughly the
+first 7-9 minutes have no full KU lineup. At Texas Tech and TCU, CBBD briefly
+lists six players.
+**Possible fix (not done):** for incomplete lists, work out the starters with
+our old ESPN rule ("anyone who subs out before subbing in started") and replay
+substitutions until CBBD's list is complete.
+
+## 16. Count every CBBD call
+**Decided:** Each request adds one to `api_usage` for the current month. The
+loader prints the total. Slowing live polling as the limit approaches comes
+with the worker (Milestone 3).

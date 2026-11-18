@@ -6,6 +6,7 @@ team. `for_team()` flips them when a page asks for one team's view.
 from dataclasses import dataclass
 
 from . import clock
+from .plays import Play
 
 KILLSHOT_MIN = 10  # a killshot is a run of 10+ unanswered points
 
@@ -42,30 +43,25 @@ class Run:
         return f"{self.pts}-0"
 
 
-def win_probability(summary: dict, plays: list[dict], every: int = 10) -> list[WinProbPoint]:
-    """ESPN's play-by-play win probability, thinned to about one point per 10 game seconds.
+def win_probability(plays: list[Play], every: int = 10) -> list[WinProbPoint]:
+    """Win probability over the game, thinned to about one point per 10 game seconds.
 
-    ESPN gives a probability per play id; we look up each play's time and score.
+    Returns an empty list when the provider has no win probability for the game.
     """
-    by_id = {p["id"]: p for p in plays}
-    raw = summary.get("winprobability") or []
     points: list[WinProbPoint] = []
+    with_wp = [p for p in plays if p.home_wp is not None]
     last_t = -every
-    for i, w in enumerate(raw):
-        p = by_id.get(w.get("playId"))
-        if p is None:
-            continue
-        t = round(clock.elapsed(p["period"]["number"], p["clock"]["displayValue"]))
-        is_last = i == len(raw) - 1
+    for i, p in enumerate(with_wp):
+        t = round(p.t)
+        is_last = i == len(with_wp) - 1
         if t - last_t < every and not is_last:
             continue
         last_t = t
-        points.append(WinProbPoint(t, round(100 * w["homeWinPercentage"], 1),
-                                   p.get("homeScore", 0), p.get("awayScore", 0)))
+        points.append(WinProbPoint(t, round(p.home_wp, 1), p.home_pts, p.away_pts))
     return points
 
 
-def killshots(plays: list[dict], minimum: int = KILLSHOT_MIN) -> list[Run]:
+def killshots(plays: list[Play], minimum: int = KILLSHOT_MIN) -> list[Run]:
     """Every scoring run of `minimum`+ unanswered points, by either team.
 
     Walk the scoring plays in order. Consecutive scores by the same team extend
@@ -80,16 +76,15 @@ def killshots(plays: list[dict], minimum: int = KILLSHOT_MIN) -> list[Run]:
             runs.append(Run(**current))
 
     for p in plays:
-        if not p.get("scoringPlay") or not p.get("team"):
+        if not (p.made and p.points and p.team_id):
             continue
-        team = p["team"]["id"]
-        t = round(clock.elapsed(p["period"]["number"], p["clock"]["displayValue"]))
-        if current is None or team != current["team_id"]:
+        t = round(p.t)
+        if current is None or p.team_id != current["team_id"]:
             finish()
             start = current["t1"] if current else 0
-            current = dict(team_id=team, pts=0, t0=start, t1=t, home0=home, away0=away, home1=home, away1=away)
-        current["pts"] += p.get("scoreValue", 0)
-        home, away = p["homeScore"], p["awayScore"]
+            current = dict(team_id=p.team_id, pts=0, t0=start, t1=t, home0=home, away0=away, home1=home, away1=away)
+        current["pts"] += p.points
+        home, away = p.home_pts, p.away_pts
         current.update(t1=t, home1=home, away1=away)
     finish()
     return runs

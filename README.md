@@ -1,22 +1,23 @@
 # killshot
 
 An NCAA men's basketball companion app. Tracks the most efficient lineups, win
-probability and killshots (10-0 runs) for a team, rebuilt from ESPN play-by-play.
+probability and killshots (10-0 runs) for a team, from CollegeBasketballData.com play-by-play.
 Built for any team; ships with Kansas.
 
 ## What's here
 
 | Module | Job |
 |---|---|
-| `killshot/espn.py` | The only code that talks to ESPN |
-| `killshot/stints.py` | Rebuilds who was on the floor, from substitutions |
+| `killshot/sources/cbbd.py` | The only code that talks to CollegeBasketballData.com, and translates its data |
+| `killshot/plays.py` | Our own play format, so the basketball code never sees provider field names |
+| `killshot/stints.py` | Splits a game into stretches with the same five players on the floor |
 | `killshot/box.py` | Counting stats, possessions, ratings |
 | `killshot/rollup.py` | Adds stints up into lineups, on/off splits, team totals |
 | `killshot/events.py` | Win probability and killshots |
-| `killshot/game.py` | One ESPN game file → everything above |
+| `killshot/game.py` | One game → stints, win probability, killshots, data checks |
 | `migrations/*.sql` | The Postgres schema, one numbered file per change |
 | `killshot/db.py` | All SQL: save a game, read a season's stints |
-| `killshot/load.py` | Loads a team's finished games from ESPN into Postgres |
+| `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
 | `killshot/inspect.py`, `killshot/season.py` | Print a game or a season from the command line |
 
 Choices behind the code are in [`docs/decisions.md`](docs/decisions.md).
@@ -25,13 +26,14 @@ Choices behind the code are in [`docs/decisions.md`](docs/decisions.md).
 
 ```bash
 pip install -e ".[dev]"
-python -m killshot.inspect tests/fixtures/401909786.json.gz   # KU 89, Kentucky 69, no database needed
+python -m killshot.inspect tests/fixtures/cbbd_372750.json.gz  # KU 89, Kentucky 69, no database or API key needed
 
 docker compose up -d db                                         # local Postgres
 export DATABASE_URL=postgresql://killshot:killshot@localhost:5432/killshot
-python -m killshot.load --team 2305 --seasons 2026 2027         # ~40 games, about a minute
+export CBBD_API_KEY=...                                         # your CollegeBasketballData.com key
+python -m killshot.load --team Kansas --seasons 2026 2027       # ~40 games, ~41 API calls
 python -m killshot.season --season 2026                         # team ratings, lineups, on/off
-psql "$DATABASE_URL" -c "SELECT sum(team_pts), sum(opp_pts) FROM stints WHERE team_id = '2305'"
+psql "$DATABASE_URL" -c "SELECT sum(team_pts), sum(opp_pts) FROM stints WHERE team_id = '131'"
 
 pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres tests
 ```
@@ -39,7 +41,9 @@ pytest   # set TEST_DATABASE_URL to a throwaway database to include the Postgres
 ## Roadmap
 
 1. Core library ✓
-2. **Database (Postgres schema, load history)** ← you are here
+2. Database (Postgres schema, load history) ✓
+   - 2.1 Migration lock ✓
+   - 2.2 **CollegeBasketballData.com as the data source** ← you are here
 3. Worker (schedule, finals)
 4. API
 5. Railway deploy

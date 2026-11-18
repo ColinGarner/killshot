@@ -17,11 +17,24 @@ BOX_FIELDS = ["pts", "fga", "fgm", "tpa", "tpm", "fta", "ftm", "oreb", "dreb", "
 
 
 def connect(url: str) -> psycopg.Connection:
-    return psycopg.connect(url)
+    """Open a connection in autocommit mode: each statement saves immediately,
+    except inside `with conn.transaction():`, where a group saves all together."""
+    return psycopg.connect(url, autocommit=True)
+
+
+def count_api_call(conn: psycopg.Connection) -> None:
+    """Record one CBBD API call against this calendar month."""
+    conn.execute("""INSERT INTO api_usage (month, calls) VALUES (to_char(now(), 'YYYY-MM'), 1)
+                    ON CONFLICT (month) DO UPDATE SET calls = api_usage.calls + 1""")
+
+
+def api_calls_this_month(conn: psycopg.Connection) -> int:
+    row = conn.execute("SELECT calls FROM api_usage WHERE month = to_char(now(), 'YYYY-MM')").fetchone()
+    return row[0] if row else 0
 
 
 # Any fixed number works; every process that migrates must use the same one.
-MIGRATION_LOCK = 20_305  # 2305 is Kansas
+MIGRATION_LOCK = 20_305
 
 
 def migrate(conn: psycopg.Connection) -> list[str]:
@@ -65,23 +78,23 @@ def save_game(conn: psycopg.Connection, game: Game, raw: dict | None = None) -> 
     with conn.transaction():
         for team in (game.home, game.away):
             conn.execute(
-                """INSERT INTO teams (id, name, abbr, color) VALUES (%s, %s, %s, %s)
-                   ON CONFLICT (id) DO UPDATE SET name = excluded.name, abbr = excluded.abbr, color = excluded.color""",
-                (team.id, team.name, team.abbr, team.color))
+                """INSERT INTO teams (id, name) VALUES (%s, %s)
+                   ON CONFLICT (id) DO UPDATE SET name = excluded.name""",
+                (team.id, team.name))
 
         for p in game.players.values():
             conn.execute(
-                """INSERT INTO players (id, team_id, name, short_name, position) VALUES (%s, %s, %s, %s, %s)
+                """INSERT INTO players (id, team_id, name, short_name) VALUES (%s, %s, %s, %s)
                    ON CONFLICT (id) DO UPDATE SET team_id = excluded.team_id, name = excluded.name,
-                       short_name = excluded.short_name, position = excluded.position""",
-                (p.id, p.team_id, p.name, p.short_name, p.position))
+                       short_name = excluded.short_name""",
+                (p.id, p.team_id, p.name, p.short_name))
 
         conn.execute("DELETE FROM games WHERE id = %s", (game.id,))  # cascades to stints, win_prob, runs
         conn.execute(
-            """INSERT INTO games (id, season, start_at, state, status, neutral_site,
+            """INSERT INTO games (id, espn_id, season, start_at, state, status, neutral_site,
                                   home_team_id, away_team_id, home_pts, away_pts, raw)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (game.id, game.season, game.start, game.state, game.status, game.neutral_site,
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (game.id, game.espn_id, game.season, game.start, game.state, game.status, game.neutral_site,
              game.home.id, game.away.id, game.home.score, game.away.score,
              json.dumps(raw) if raw is not None else None))
 
@@ -134,5 +147,5 @@ def stints_for(conn: psycopg.Connection, team_id: str, season: int) -> list[Stin
 
 
 def player_names(conn: psycopg.Connection) -> dict[str, str]:
-    """ESPN athlete id -> short name, for labeling lineups."""
+    """Player id -> short name, for labeling lineups."""
     return dict(conn.execute("SELECT id, short_name FROM players").fetchall())

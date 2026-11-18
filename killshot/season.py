@@ -1,7 +1,7 @@
 """Print a team's season from the database: team ratings, top lineups, on/off.
 
-    python -m killshot.season --team 2305 --season 2026
-    python -m killshot.season --team 2305 --season 2026 --no-garbage
+    python -m killshot.season --season 2026
+    python -m killshot.season --season 2026 --no-garbage
 """
 import argparse
 import os
@@ -11,7 +11,7 @@ from . import db, rollup
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--team", default="2305")
+    ap.add_argument("--team", default="131", help="CBBD team id (default: Kansas)")
     ap.add_argument("--season", type=int, required=True)
     ap.add_argument("--min-minutes", type=float, default=40)
     ap.add_argument("--no-garbage", action="store_true", help="leave out garbage time")
