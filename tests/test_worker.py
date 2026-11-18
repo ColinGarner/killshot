@@ -111,7 +111,7 @@ def test_schedule_syncs_every_10_minutes_around_a_game_and_every_6_hours_otherwi
     client = FakeCBBD([far])
     wait = worker.run_once(conn, client, SETTINGS, dt.date(2026, 11, 18))
     assert client.calls == []  # 6 hours haven't passed
-    assert wait > 5 * 60 * 60
+    assert wait == worker.MAX_SLEEP  # wakes for a heartbeat, but makes no calls
 
 
 def test_no_calls_at_all_once_the_monthly_allowance_is_used(conn):

@@ -171,3 +171,21 @@ before the bracket is set) aren't stored until the opponent is known.
 5 (Railway deploy) last.
 **Why:** Deploying all the pieces together means one Railway setup instead of
 several partial ones.
+
+## 22. A thin, read-only API from each team's side
+**Decided:** `killshot/api.py` is a handful of read-only FastAPI routes. Each
+reads with `db`, adds up with `rollup`, and returns JSON turned around to the
+requested team's side (its points first, its win probability, "by team" or "by
+opponent" on killshots). Only tracked teams are served. Player names come back
+as both `name` and `short_name`. Upcoming games have no score (CBBD sends 0-0).
+**Why:** The basketball logic stays in the library and the command line and API
+can't disagree. FastAPI documents every route automatically at `/docs`.
+**Gave up:** Connection pooling (one database connection per request is fine at
+this traffic) and caching (add if a page gets slow).
+
+## 23. Health means the worker checked in within 30 minutes
+**Decided:** `/healthz` returns 200 only if the database answers and the worker's
+heartbeat is under 30 minutes old; otherwise 503. The worker now wakes at least
+every 15 minutes to record a heartbeat (with no API calls unless something is due).
+**Why:** On Railway, a dead worker would otherwise go unnoticed: the website keeps
+serving old data. A failing health check is something an uptime monitor can alert on.

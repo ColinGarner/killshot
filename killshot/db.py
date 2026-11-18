@@ -129,15 +129,18 @@ def saved_final_game_ids(conn: psycopg.Connection) -> set[str]:
     return {row[0] for row in conn.execute("SELECT id FROM games WHERE state = 'post'")}
 
 
-def stints_for(conn: psycopg.Connection, team_id: str, season: int) -> list[Stint]:
-    """All of a team's stints in a season, as Stint objects ready for `rollup`."""
+def stints_for(conn: psycopg.Connection, team_id: str, season: int | None = None,
+               game_id: str | None = None) -> list[Stint]:
+    """A team's stints for a season, or for one game, as Stint objects ready for `rollup`."""
     columns = ", ".join([f"s.team_{f}" for f in BOX_FIELDS] + [f"s.opp_{f}" for f in BOX_FIELDS])
     rows = conn.execute(
         f"""SELECT s.team_id, s.player_ids, s.t_start, s.t_end, s.garbage, {columns}
             FROM stints s JOIN games g ON g.id = s.game_id
-            WHERE s.team_id = %s AND g.season = %s
+            WHERE s.team_id = %(team)s
+              AND (%(season)s::int IS NULL OR g.season = %(season)s)
+              AND (%(game)s::text IS NULL OR g.id = %(game)s)
             ORDER BY g.start_at, s.t_start""",
-        (team_id, season)).fetchall()
+        {"team": team_id, "season": season, "game": game_id}).fetchall()
     n = len(BOX_FIELDS)
     stints = []
     for row in rows:
@@ -151,6 +154,12 @@ def stints_for(conn: psycopg.Connection, team_id: str, season: int) -> list[Stin
 def player_names(conn: psycopg.Connection) -> dict[str, str]:
     """Player id -> short name, for labeling lineups."""
     return dict(conn.execute("SELECT id, short_name FROM players").fetchall())
+
+
+def players(conn: psycopg.Connection) -> dict[str, dict]:
+    """Player id -> {"id", "name", "short_name"}, for display."""
+    return {pid: {"id": pid, "name": name, "short_name": short}
+            for pid, name, short in conn.execute("SELECT id, name, short_name FROM players").fetchall()}
 
 
 # --- for the worker ------------------------------------------------------------
@@ -230,3 +239,45 @@ def heartbeat(conn: psycopg.Connection, note: str, synced_schedule: bool = False
 def seconds_since_schedule_sync(conn: psycopg.Connection) -> float | None:
     row = conn.execute("SELECT extract(epoch FROM now() - last_schedule_sync_at) FROM worker_status WHERE id = 1").fetchone()
     return float(row[0]) if row and row[0] is not None else None
+
+
+# --- for the API ---------------------------------------------------------------
+
+def team_ids(conn: psycopg.Connection, names: list[str]) -> dict[str, str]:
+    """Team id -> name, for the given team names (as CBBD spells them)."""
+    return dict(conn.execute("SELECT id, name FROM teams WHERE name = ANY(%s)", (names,)).fetchall())
+
+
+def games_for_team(conn: psycopg.Connection, team_id: str, season: int | None = None,
+                   game_id: str | None = None) -> list[dict]:
+    """A team's games for a season (or just one game), oldest first, as plain dicts."""
+    cur = conn.execute(
+        """SELECT g.id, g.start_at, g.state, g.status, g.neutral_site,
+                  g.home_team_id, h.name AS home_name, g.away_team_id, a.name AS away_name,
+                  g.home_pts, g.away_pts, g.plays_saved_at IS NOT NULL AS has_plays
+           FROM games g JOIN teams h ON h.id = g.home_team_id JOIN teams a ON a.id = g.away_team_id
+           WHERE %(team)s IN (g.home_team_id, g.away_team_id)
+             AND (%(season)s::int IS NULL OR g.season = %(season)s)
+             AND (%(game)s::text IS NULL OR g.id = %(game)s)
+           ORDER BY g.start_at""", {"team": team_id, "season": season, "game": game_id})
+    names = [c.name for c in cur.description]
+    return [dict(zip(names, row)) for row in cur.fetchall()]
+
+
+def win_prob_for_game(conn: psycopg.Connection, game_id: str) -> list[tuple]:
+    """(t, home_wp, home_pts, away_pts) rows, in game order."""
+    return conn.execute("SELECT t, home_wp, home_pts, away_pts FROM win_prob WHERE game_id = %s ORDER BY t",
+                        (game_id,)).fetchall()
+
+
+def runs_for_game(conn: psycopg.Connection, game_id: str) -> list[tuple]:
+    """(team_id, pts, t0, t1, home0, away0, home1, away1) rows, in game order."""
+    return conn.execute(
+        "SELECT team_id, pts, t0, t1, home0, away0, home1, away1 FROM runs WHERE game_id = %s ORDER BY t0",
+        (game_id,)).fetchall()
+
+
+def worker_heartbeat_age(conn: psycopg.Connection) -> tuple[float | None, str | None]:
+    """Seconds since the worker's last heartbeat, and its last note. (None, None) if it never ran."""
+    row = conn.execute("SELECT extract(epoch FROM now() - heartbeat_at), note FROM worker_status WHERE id = 1").fetchone()
+    return (float(row[0]), row[1]) if row else (None, None)
