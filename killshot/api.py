@@ -7,15 +7,21 @@ things up with `rollup`, and returns plain JSON. All numbers are from the
 requested team's side (its points first, its win probability, its runs vs.
 the opponent's).
 
-Settings (environment variables): DATABASE_URL, TRACKED_TEAMS (default: Kansas).
+It also serves the built frontend (web/dist): any path that isn't an API route
+gets the React app, which then shows the right page for that URL.
+
+Settings (environment variables): DATABASE_URL, TRACKED_TEAMS (default: Kansas),
+WEB_DIST (default: web/dist in this repo).
 """
 import os
 from collections.abc import Iterator
+from pathlib import Path
 
 import psycopg
 from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi.responses import FileResponse
 
-from . import db, rollup
+from . import db, rollup, schemas
 from .clock import label
 from .events import WinProbPoint
 
@@ -54,6 +60,7 @@ def game_summary(row: dict, team_id: str) -> dict:
     return {
         "id": row["id"],
         "start_at": row["start_at"].isoformat(),
+        "time_tbd": row["time_tbd"],
         "state": row["state"],                  # "pre", "in" or "post"
         "status": row["status"],
         "venue": "neutral" if row["neutral_site"] else ("home" if home else "away"),
@@ -78,7 +85,7 @@ def lineup_rows(rows: list[dict], people: dict[str, dict]) -> list[dict]:
 # --- routes --------------------------------------------------------------------
 
 @app.get("/healthz")
-def healthz(response: Response, conn: psycopg.Connection = Depends(get_conn)) -> dict:
+def healthz(response: Response, conn: psycopg.Connection = Depends(get_conn)) -> schemas.Health:
     """Up if the database answers and the worker has checked in within 30 minutes."""
     age, note = db.worker_heartbeat_age(conn)
     healthy = age is not None and age < HEALTHY_HEARTBEAT
@@ -88,19 +95,19 @@ def healthz(response: Response, conn: psycopg.Connection = Depends(get_conn)) ->
 
 
 @app.get("/api/teams")
-def teams(conn: psycopg.Connection = Depends(get_conn)) -> list[dict]:
+def teams(conn: psycopg.Connection = Depends(get_conn)) -> list[schemas.Team]:
     return [{"id": i, "name": n} for i, n in tracked(conn).items()]
 
 
 @app.get("/api/teams/{team_id}/games")
-def games(team_id: str, season: int, conn: psycopg.Connection = Depends(get_conn)) -> list[dict]:
+def games(team_id: str, season: int, conn: psycopg.Connection = Depends(get_conn)) -> list[schemas.GameSummary]:
     """The schedule and results for a season, oldest first."""
     require_team(team_id, conn)
     return [game_summary(row, team_id) for row in db.games_for_team(conn, team_id, season)]
 
 
 @app.get("/api/teams/{team_id}/games/{game_id}")
-def game(team_id: str, game_id: str, conn: psycopg.Connection = Depends(get_conn)) -> dict:
+def game(team_id: str, game_id: str, conn: psycopg.Connection = Depends(get_conn)) -> schemas.GameDetail:
     """One game: best and worst lineups, win probability over time, and killshots."""
     require_team(team_id, conn)
     rows = db.games_for_team(conn, team_id, game_id=game_id)
@@ -129,7 +136,7 @@ def game(team_id: str, game_id: str, conn: psycopg.Connection = Depends(get_conn
 
 @app.get("/api/teams/{team_id}/seasons/{season}")
 def season(team_id: str, season: int, min_minutes: float = 20, exclude_garbage: bool = False,
-           conn: psycopg.Connection = Depends(get_conn)) -> dict:
+           conn: psycopg.Connection = Depends(get_conn)) -> schemas.Season:
     """Season totals, lineups with at least `min_minutes` together, and on/off splits."""
     name = require_team(team_id, conn)
     stints = db.stints_for(conn, team_id, season=season)
@@ -145,3 +152,26 @@ def season(team_id: str, season: int, min_minutes: float = 20, exclude_garbage: 
         "on_off": sorted(on_off, key=lambda r: -r["on_off"]),
     }
 
+
+# --- the frontend --------------------------------------------------------------
+# Registered last, so every API route above matches first.
+
+def web_dist() -> Path:
+    return Path(os.environ.get("WEB_DIST", Path(__file__).resolve().parent.parent / "web" / "dist")).resolve()
+
+
+@app.get("/{path:path}", include_in_schema=False)
+def frontend(path: str) -> FileResponse:
+    """Serve a built frontend file, or the React app's index.html for any page URL."""
+    if path == "api" or path.startswith("api/"):
+        raise HTTPException(404, "no such API route")
+    dist = web_dist()
+    file = (dist / path).resolve()
+    if path and file.is_file() and dist in file.parents:  # never serve anything outside web/dist
+        # Vite puts a content hash in asset file names, so they can be cached for good.
+        return FileResponse(file, headers={"Cache-Control": "public, max-age=31536000, immutable"}
+                            if path.startswith("assets/") else None)
+    index = dist / "index.html"
+    if not index.is_file():
+        raise HTTPException(404, "frontend not built: run `npm run build` in web/")
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})

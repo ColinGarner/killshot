@@ -189,3 +189,33 @@ heartbeat is under 30 minutes old; otherwise 503. The worker now wakes at least
 every 15 minutes to record a heartbeat (with no API calls unless something is due).
 **Why:** On Railway, a dead worker would otherwise go unnoticed: the website keeps
 serving old data. A failing health check is something an uptime monitor can alert on.
+
+## 24. React frontend, on the latest stable releases
+**Decided:** The frontend in `web/` is React 19 with TypeScript 7, Vite 8,
+Tailwind 4, React Router 8, TanStack Query 5 and Recharts 3, built on Node 26
+(the current LTS). Versions were checked against npm on 2026-11-18.
+**Why:** React is what the owner knows best, which makes the frontend the most
+reviewable part of the project. Components are shared across the Game log, Live
+and Season views, and the live view (Milestone 7) is natural with React state.
+**Gave up:** A build step and npm dependencies to keep current.
+**Wrinkle:** openapi-typescript still needs TypeScript 5's compiler API, which
+TypeScript 7 no longer has. `npm run gen:api` runs it in its own throwaway
+install (`npx -p ... -p typescript@5.9.3`), so the project itself stays on TS 7.
+
+## 25. Response models in Python, generated types in TypeScript
+**Decided:** Every API route declares its response shape as a Pydantic class
+(`killshot/schemas.py`). `npm run gen:api` exports the OpenAPI schema and
+generates `web/src/api/schema.d.ts`, and the frontend calls the API through a
+typed client (openapi-fetch). CI fails if the generated files are out of date.
+**Why:** A change to the API's JSON shows up as a TypeScript error at every place
+the frontend uses it, instead of as a broken page.
+
+## 26. One service serves the API and the site
+**Decided:** FastAPI serves the built frontend from `web/dist`: hashed asset files
+are cached forever, and any other non-API URL gets `index.html` so React's routes
+work on reload. The game page (with Recharts, the largest dependency) is loaded
+only when a game is opened.
+**Why:** One Railway service instead of two, and no cross-origin setup. The game
+list loads about 97 KB compressed; the chart adds about 120 KB when needed.
+**Recharts over Highcharts:** declarative React components, MIT-licensed
+(Highcharts needs a paid license for commercial use), and enough for our charts.

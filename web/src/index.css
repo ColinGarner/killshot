@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import "@fontsource/oswald/500.css";
+@import "@fontsource/oswald/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/600.css";
+
+/* KU colors and type. Dark mode follows the phone's setting (Tailwind's default). */
+@theme {
+  --color-ku-blue: #0051ba;      /* KU blue: bands, lines, good numbers */
+  --color-ku-crimson: #e8000d;   /* KU crimson: accents, bad numbers */
+  --color-ku-sky: #7ab2ff;       /* KU blue, lightened for dark backgrounds */
+  --color-ku-rose: #ff6b6f;      /* crimson, lightened for dark backgrounds */
+  --font-display: "Oswald", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+}
