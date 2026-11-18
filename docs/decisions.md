@@ -80,7 +80,7 @@ table (reproduced while building this). Editing an applied file would leave
 local and production databases silently different.
 **Gave up:** Undo ("down") migrations. Reversals are new forward files.
 
-## 11. CollegeBasketballData.com is the only data source
+## 11. CollegeBasketballData.com is the only data source (live games: see 29)
 **Decided:** All data (history, finals, schedule and, later, live) comes from
 CollegeBasketballData.com (CBBD) on Tier 1 ($1/month, 5,000 calls). ESPN's
 undocumented API is gone from the code.
@@ -243,3 +243,18 @@ command, with shell variables taking precedence. Local development runs natively
 no Docker.
 **Why:** One obvious way to run it, and nothing to install beyond Python, Node and
 Postgres. The Dockerfile arrives with the Railway deploy, where it's needed.
+
+## 29. Live games come from ESPN; history stays CBBD's
+**Decided:** During a game the live view reads ESPN's free summary
+(`sources/espn.py`) every 30 seconds. After the final, CBBD's record replaces it
+and is the only thing saved as history. ESPN's ids stay inside the live view, so
+there is no id mapping to maintain. This revises decision 11 for live games only.
+**Why:** CBBD has no live play-by-play for basketball. Tested during Rutgers at
+Notre Dame on Tier 2: `/plays/game/{id}` is empty until after the final, and
+`/live/plays` is football only. ESPN's plays use the same names and quirks as
+CBBD's; rebuilt from substitutions, five KU games (2025-26 and 2026-27) match CBBD exactly on
+score, stint points and killshots, with player minutes within 1.5.
+**Gave up:** listed (not rebuilt) lineups while the game is on, and an official
+API for live data. If ESPN's format changes, the live page goes stale; history
+is untouched. ESPN and CBBD can disagree on home and away at neutral sites, so
+the two are matched by team, never by side.

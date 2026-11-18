@@ -9,6 +9,7 @@ Built for any team; ships with Kansas.
 | Module | Job |
 |---|---|
 | `killshot/sources/cbbd.py` | The only code that talks to CollegeBasketballData.com, and translates its data |
+| `killshot/sources/espn.py` | Reads ESPN's game summary for the live view (CBBD has no live plays); never saved as history |
 | `killshot/plays.py` | Our own play format, so the basketball code never sees provider field names |
 | `killshot/stints.py` | Splits a game into stretches with the same five players on the floor |
 | `killshot/substitutions.py` | Fills in incomplete on-floor lists by replaying substitutions |
@@ -77,6 +78,13 @@ cd web && npm run gen:api       # after changing an API response: regenerate the
 3. Worker (schedule, finals) ✓
 4. API ✓
 6. Frontend ✓
-7. **Live games and mobile** ← you are here (7a: run it locally with `killshot start`)
+7. **Live games and mobile** ← you are here
+   - 7a Run it locally with `killshot start` ✓
+   - 7.1 ESPN translator ← this PR
+   - 7.2 Live state and `killshot replay`
+   - 7.3 Worker polls live games
+   - 7.4 API serves the live game
+   - 7.5 Live game page
+   - 7.6 Phone layout and Add to Home Screen
 5. Railway deploy (everything at once, after 6 and 7)
 8. Garbage-time toggle, foul trouble, scouting

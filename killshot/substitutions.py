@@ -2,7 +2,7 @@
 
 Some games arrive with incomplete on-floor lists: CBBD sometimes lists nobody
 at tip-off and only adds players as they sub in, or briefly lists six. (ESPN's
-live feed, coming in Milestone 7, never lists the floor at all.) This module
+live feed, read by `sources/espn.py`, never lists the floor at all.) This module
 fills those gaps with two basketball facts:
 
 1. Nobody can enter the game without subbing in. So anyone who does something
