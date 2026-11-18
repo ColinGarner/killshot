@@ -3,7 +3,9 @@ name = "killshot"
 version = "0.1.0"
 description = "Lineup efficiency, win probability and killshots for college basketball, from ESPN play-by-play."
 requires-python = ">=3.11"
-dependencies = []  # the core library uses only the standard library
+# The core library (stints, ratings, events) uses only the standard library;
+# psycopg is the Postgres driver used by killshot/db.py.
+dependencies = ["psycopg[binary]>=3.1"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
