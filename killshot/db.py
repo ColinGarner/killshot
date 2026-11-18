@@ -20,25 +20,39 @@ def connect(url: str) -> psycopg.Connection:
     return psycopg.connect(url)
 
 
+# Any fixed number works; every process that migrates must use the same one.
+MIGRATION_LOCK = 20_305  # 2305 is Kansas
+
+
 def migrate(conn: psycopg.Connection) -> list[str]:
     """Apply any migrations/NNN_*.sql files that haven't run yet, in order.
 
     Each file runs once; its name is recorded in schema_migrations.
     Returns the names applied this time.
+
+    Everything happens in one transaction, so a failing file undoes the whole
+    run. The advisory lock makes a second process that starts migrating at the
+    same moment (e.g. the web service and the worker on Railway) wait until the
+    first one finishes. It then sees the files already applied and does nothing.
     """
+    applied = []
     with conn.transaction():
+        conn.execute("SELECT pg_advisory_xact_lock(%s)", (MIGRATION_LOCK,))  # released at commit
         conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations "
                      "(name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())")
-    done = {row[0] for row in conn.execute("SELECT name FROM schema_migrations")}
-    applied = []
-    for path in sorted(MIGRATIONS.glob("*.sql")):
-        if path.name in done:
-            continue
-        with conn.transaction():
+        done = {row[0] for row in conn.execute("SELECT name FROM schema_migrations")}
+        for path in migration_files():
+            if path.name in done:
+                continue
             conn.execute(path.read_text())
             conn.execute("INSERT INTO schema_migrations (name) VALUES (%s)", (path.name,))
-        applied.append(path.name)
+            applied.append(path.name)
     return applied
+
+
+def migration_files() -> list[Path]:
+    """The migration files, in the order they run."""
+    return sorted(MIGRATIONS.glob("*.sql"))
 
 
 def save_game(conn: psycopg.Connection, game: Game, raw: dict | None = None) -> None:
