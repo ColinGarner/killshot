@@ -30,6 +30,7 @@ class Play:
     three: bool = False      # for shots
     points: int = 0
     player_id: str | None = None
+    sub: str | None = None   # for substitutions: "in" or "out" (player_id is the player)
     home_pts: int = 0        # score after this play
     away_pts: int = 0
     on_floor: dict[str, tuple[str, ...]] = field(default_factory=dict)  # team id -> its five players, sorted

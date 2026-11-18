@@ -17,6 +17,7 @@ from typing import Callable
 from .. import plays as P
 from ..clock import period_length, period_start
 from ..game import Game, Player, Team
+from ..substitutions import fill_lineups
 
 BASE = "https://api.collegebasketballdata.com"
 USER_AGENT = "killshot/0.2 (basketball analytics)"
@@ -96,17 +97,23 @@ def to_play(p: dict, team_ids: dict[str, str]) -> P.Play:
         on_floor.setdefault(team_ids[player["team"]], []).append(str(player["id"]))
     participants = p.get("participants") or []
     wp = p.get("homeWinProbability")
+    text = (p.get("playText") or "").lower()
+    kind = play_kind(p)
+    sub = None
+    if kind == P.SUB:
+        sub = "in" if "subbing in" in text else "out" if "subbing out" in text else None
     return P.Play(
         # secondsRemaining counts down within the period; we count up from tip-off
         t=period_start(p["period"]) + period_length(p["period"]) - p["secondsRemaining"],
         period=p["period"],
         team_id=str(p["teamId"]) if p.get("teamId") is not None else None,
-        kind=play_kind(p),
+        kind=kind,
         # CBBD labels every free throw "MadeFreeThrow", even misses, so trust scoringPlay
         made=bool(p.get("scoringPlay")),
         three=shot.get("range") == "three_pointer",
         points=int(p.get("scoreValue") or 0),
         player_id=str(participants[0]["id"]) if participants else None,
+        sub=sub,
         home_pts=p["homeScore"],
         away_pts=p["awayScore"],
         on_floor={tid: tuple(sorted(ids)) for tid, ids in on_floor.items()},
@@ -126,6 +133,8 @@ def to_game(data: dict) -> Game:
 
     team_ids = {g["homeTeam"]: home.id, g["awayTeam"]: away.id}
     plays = [to_play(p, team_ids) for p in raw_plays]
+    # Some games list incomplete lineups (see substitutions.py); fill them from subs.
+    game.lineups_filled = fill_lineups(plays, [home.id, away.id])
     for p in raw_plays:
         for person in p.get("onFloor") or []:
             pid = str(person["id"])
