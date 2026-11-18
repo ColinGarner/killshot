@@ -206,3 +206,19 @@ are cached forever, and any other non-API URL gets `index.html` so the
 frontend's routes work on reload. Unknown `/api/...` paths stay 404s, and no
 file outside `web/dist` is ever served.
 **Why:** One Railway service instead of two, and no cross-origin setup.
+
+## 26. React frontend, on the latest stable releases
+**Decided:** The frontend in `web/` is React 19 with TypeScript 7, Vite 8,
+Tailwind 4, React Router 8, TanStack Query 5 and Recharts 3, built on Node 26
+(the current LTS). Versions were checked against npm on 2026-11-18. The frontend
+calls the API through a typed client (openapi-fetch) whose types `npm run gen:api`
+generates from the API's schema (decision 24); CI fails if they're out of date.
+**Why:** React is what the owner knows best, which makes the frontend the most
+reviewable part of the project. Components are shared across the Game log, Live
+and Season views, and the live view (Milestone 7) is natural with React state.
+**Gave up:** A build step and npm dependencies to keep current.
+**Wrinkle:** openapi-typescript still needs TypeScript 5's compiler API, which
+TypeScript 7 no longer has. `npm run gen:api` runs it in its own throwaway
+install (`npx -p ... -p typescript@5.9.3`), so the project itself stays on TS 7.
+**Recharts over Highcharts:** declarative React components, MIT-licensed
+(Highcharts needs a paid license for commercial use), and enough for our charts.
