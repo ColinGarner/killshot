@@ -50,7 +50,7 @@
   "/api/teams/{team_id}/games": {
    "get": {
     "summary": "Games",
-    "description": "The schedule and results for a season, oldest first.",
+    "description": "The schedule and results for a season, oldest first. A game that is on shows\nits live score and state, from the live page the worker saves every 30 seconds.",
     "operationId": "games_api_teams__team_id__games_get",
     "parameters": [
      {
@@ -103,7 +103,7 @@
   "/api/teams/{team_id}/games/{game_id}": {
    "get": {
     "summary": "Game",
-    "description": "One game: best and worst lineups, win probability over time, and killshots.",
+    "description": "One game: best and worst lineups, win probability over time, and killshots.\n\nWhile the game is on (and until CBBD's official record arrives after the\nfinal), this is the live page the worker built from ESPN, with a `live` block.",
     "operationId": "game_api_teams__team_id__games__game_id__get",
     "parameters": [
      {
@@ -246,6 +246,16 @@
       },
       "type": "array",
       "title": "Killshots"
+     },
+     "live": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Live"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -361,6 +371,11 @@
      "has_plays": {
       "type": "boolean",
       "title": "Has Plays"
+     },
+     "live": {
+      "type": "boolean",
+      "title": "Live",
+      "default": false
      }
     },
     "type": "object",
@@ -617,6 +632,40 @@
      "stints"
     ],
     "title": "Lineup"
+   },
+   "Live": {
+    "properties": {
+     "updated_at": {
+      "type": "string",
+      "title": "Updated At"
+     },
+     "clock": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Clock"
+     },
+     "on_floor": {
+      "items": {
+       "$ref": "#/components/schemas/Player"
+      },
+      "type": "array",
+      "title": "On Floor"
+     }
+    },
+    "type": "object",
+    "required": [
+     "updated_at",
+     "clock",
+     "on_floor"
+    ],
+    "title": "Live",
+    "description": "Only while a game is on (and until CBBD's official record replaces it after the final)."
    },
    "OnOff": {
     "properties": {

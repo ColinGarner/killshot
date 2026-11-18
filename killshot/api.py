@@ -68,18 +68,27 @@ def teams(conn: psycopg.Connection = Depends(get_conn)) -> list[schemas.Team]:
 
 @app.get("/api/teams/{team_id}/games")
 def games(team_id: str, season: int, conn: psycopg.Connection = Depends(get_conn)) -> list[schemas.GameSummary]:
-    """The schedule and results for a season, oldest first."""
+    """The schedule and results for a season, oldest first. A game that is on shows
+    its live score and state, from the live page the worker saves every 30 seconds."""
     require_team(team_id, conn)
-    return [game_summary(row, team_id) for row in db.games_for_team(conn, team_id, season)]
+    live = db.live_games(conn, team_id)
+    return [live.get(row["id"]) or game_summary(row, team_id) for row in db.games_for_team(conn, team_id, season)]
 
 
 @app.get("/api/teams/{team_id}/games/{game_id}")
 def game(team_id: str, game_id: str, conn: psycopg.Connection = Depends(get_conn)) -> schemas.GameDetail:
-    """One game: best and worst lineups, win probability over time, and killshots."""
+    """One game: best and worst lineups, win probability over time, and killshots.
+
+    While the game is on (and until CBBD's official record arrives after the
+    final), this is the live page the worker built from ESPN, with a `live` block."""
     require_team(team_id, conn)
     rows = db.games_for_team(conn, team_id, game_id=game_id)
     if not rows:
         raise HTTPException(404, f"game {game_id} not found for team {team_id}")
+    live = db.live_page(conn, game_id, team_id)
+    if live:
+        page, updated_at = live
+        return {**page, "live": {**page["live"], "updated_at": updated_at.isoformat()}}
     row = rows[0]
     home = row["home_team_id"] == team_id
     return detail.build(game_summary(row, team_id), team_id, home,
@@ -126,6 +135,10 @@ def frontend(path: str) -> FileResponse:
         # Vite puts a content hash in asset file names, so they can be cached for good.
         return FileResponse(file, headers={"Cache-Control": "public, max-age=31536000, immutable"}
                             if path.startswith("assets/") else None)
+    if path.startswith("assets/"):
+        # A missing script must be a 404, not the page: HTML where the browser expects
+        # JavaScript leaves a blank screen. (Happens to a tab opened before a rebuild.)
+        raise HTTPException(404, "no such file; reload the page")
     index = dist / "index.html"
     if not index.is_file():
         raise HTTPException(404, "frontend not built: run `npm run build` in web/")

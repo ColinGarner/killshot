@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router";
 import { useGame, useTeam } from "../api/queries";
 import { Killshots } from "../components/Killshots";
 import { LineupTable } from "../components/LineupTable";
+import { LiveBar, OnFloor } from "../components/LiveBar";
 import { Failed, Loading, SectionTitle } from "../components/Status";
 import { WinProbChart } from "../components/WinProbChart";
 import { gameDate, venuePrefix } from "../lib/format";
@@ -16,9 +17,10 @@ export function GamePage() {
   if (game.error) return <Failed error={game.error} />;
   if (!game.data) return <Loading what="the game" />;
 
-  const { game: g, win_prob, killshots, lineups, min_poss } = game.data;
+  const { game: g, win_prob, killshots, lineups, min_poss, live } = game.data;
   return (
     <article className="space-y-8">
+      <LiveBar detail={game.data} team={team.data?.name ?? ""} />
       <div>
         <Link to="/games" className="text-sm text-ku-blue hover:underline dark:text-ku-sky">
           ← Games
@@ -27,12 +29,21 @@ export function GamePage() {
           <span className="text-slate-500">{venuePrefix(g.venue)}</span> {g.opponent.name}
         </h2>
         <p className="mt-1 flex items-baseline gap-3 tabular-nums">
-          <span className={`font-display text-3xl font-bold ${g.result === "W" ? "text-ku-blue dark:text-ku-sky" : "text-ku-crimson dark:text-ku-rose"}`}>
-            {g.result} {g.pts}-{g.opp_pts}
-          </span>
+          {!live && (
+            <span className={`font-display text-3xl font-bold ${g.result === "W" ? "text-ku-blue dark:text-ku-sky" : "text-ku-crimson dark:text-ku-rose"}`}>
+              {g.result} {g.pts}-{g.opp_pts}
+            </span>
+          )}
           <span className="text-sm text-slate-500">{gameDate(g.start_at)}</span>
         </p>
       </div>
+
+      {live && live.on_floor.length > 0 && g.state !== "post" && (
+        <section>
+          <SectionTitle>On the floor</SectionTitle>
+          <OnFloor detail={game.data} />
+        </section>
+      )}
 
       <section>
         <SectionTitle>Win probability</SectionTitle>

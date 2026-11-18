@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import type { Killshot, Lineup, OnOff } from "../api/client";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import type { GameDetail, Killshot, Lineup, OnOff } from "../api/client";
 import { Killshots } from "./Killshots";
+import { LiveBar, OnFloor } from "./LiveBar";
 import { LineupTable } from "./LineupTable";
 import { OnOffTable } from "./OnOffTable";
 
@@ -51,5 +52,45 @@ describe("OnOffTable", () => {
     expect(screen.getByText("+47.2")).toBeTruthy();
     expect(screen.getByText("+29.8")).toBeTruthy();
     expect(screen.getByText("+17.4")).toBeTruthy();
+  });
+});
+
+afterEach(cleanup); // each test starts from an empty page
+
+const liveGame = (state: "in" | "post", updatedAt = new Date().toISOString()): GameDetail => ({
+  game: { id: "1", start_at: "2026-11-19T00:30:00Z", time_tbd: false, state, status: "12:41 - 2nd Half", venue: "neutral",
+    opponent: { id: "2", name: "West Virginia" }, pts: 54, opp_pts: 48, result: state === "post" ? "W" : null,
+    has_plays: false, live: true },
+  min_poss: 3, lineups: { best: [], worst: [] }, killshots: [],
+  win_prob: [{ t: 0, clock: "", win_prob: 50, pts: 0, opp_pts: 0 }, { t: 5, clock: "", win_prob: 60, pts: 40, opp_pts: 48 }, { t: 10, clock: "", win_prob: 74.6, pts: 54, opp_pts: 48 }],
+  live: { updated_at: updatedAt, clock: "2nd 12:41", on_floor: lineup.players },
+});
+
+describe("LiveBar", () => {
+  it("shows the score, clock, win probability and a run in progress", () => {
+    render(<LiveBar detail={liveGame("in")} team="Kansas" />);
+    expect(screen.getByText("54-48")).toBeTruthy();
+    expect(screen.getByText("12:41 - 2nd Half")).toBeTruthy();
+    expect(screen.getByText("75%")).toBeTruthy();
+    expect(screen.getByText("Kansas on a 14-0 run")).toBeTruthy();
+    expect(screen.getByText(/^Updated/)).toBeTruthy();
+  });
+
+  it("says when the data has gone stale", () => {
+    render(<LiveBar detail={liveGame("in", new Date(Date.now() - 5 * 60_000).toISOString())} team="Kansas" />);
+    expect(screen.getByText(/waiting for new data/)).toBeTruthy();
+  });
+
+  it("at ESPN's final, says official stats are coming", () => {
+    render(<LiveBar detail={liveGame("post")} team="Kansas" />);
+    expect(screen.getByText("Final")).toBeTruthy();
+    expect(screen.getByText(/Official stats/)).toBeTruthy();
+  });
+});
+
+describe("OnFloor", () => {
+  it("lists the five by short name", () => {
+    render(<OnFloor detail={liveGame("in")} />);
+    expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Blyden", "Dawes", "Kinney", "Stokes", "White"]);
   });
 });

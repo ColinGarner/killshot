@@ -65,8 +65,8 @@ function GameRow({ game: g }: { game: GameSummary }) {
       <Result game={g} />
     </div>
   );
-  // Only played games with play-by-play have a page worth opening.
-  return g.has_plays ? (
+  // Games with play-by-play have a page worth opening, and so does a game that's on.
+  return g.has_plays || g.live ? (
     <Link to={`/games/${g.id}`} className="block rounded-md hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-ku-blue dark:hover:bg-slate-900">
       {body}
     </Link>
@@ -77,7 +77,17 @@ function GameRow({ game: g }: { game: GameSummary }) {
 
 function Result({ game: g }: { game: GameSummary }) {
   if (g.state === "pre") return <span className="text-sm text-slate-500">{g.time_tbd ? "Time TBA" : tipTime(g.start_at)}</span>;
-  if (g.state === "in") return <span className="font-display text-sm font-bold tracking-wider text-ku-crimson uppercase">Live</span>;
+  if (g.state === "in")
+    return (
+      <span className="flex items-baseline gap-2 tabular-nums">
+        <span className="font-display text-sm font-bold tracking-wider text-ku-crimson uppercase dark:text-ku-rose">● Live</span>
+        {g.live && (
+          <span className="font-semibold">
+            {g.pts}-{g.opp_pts}
+          </span>
+        )}
+      </span>
+    );
   return (
     <span className="flex items-baseline gap-2 tabular-nums">
       <span className={`font-display font-bold ${g.result === "W" ? "text-ku-blue dark:text-ku-sky" : "text-ku-crimson dark:text-ku-rose"}`}>
@@ -86,7 +96,7 @@ function Result({ game: g }: { game: GameSummary }) {
       <span className="font-semibold">
         {g.pts}-{g.opp_pts}
       </span>
-      {!g.has_plays && <span className="text-xs text-slate-500">stats soon</span>}
+      {!g.has_plays && !g.live && <span className="text-xs text-slate-500">stats soon</span>}
     </span>
   );
 }
