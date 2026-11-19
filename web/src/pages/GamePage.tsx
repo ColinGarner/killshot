@@ -48,6 +48,11 @@ export function GamePage() {
       <section>
         <SectionTitle>Win probability</SectionTitle>
         <WinProbChart points={win_prob} killshots={killshots} opponent={g.opponent.name} />
+        <p className="mt-2 text-xs text-slate-500">
+          {live
+            ? "ESPN's win probability model, live. After the final it switches to CollegeBasketballData's, which can differ, especially early in the game."
+            : "CollegeBasketballData's win probability model. During the game this showed ESPN's, which can differ, especially early."}
+        </p>
       </section>
 
       <section>
