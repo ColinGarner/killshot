@@ -68,6 +68,10 @@ class Client:
         """Everything we store for one game: CBBD's game record plus its plays."""
         return {"game": game, "plays": self.plays(game["id"])}
 
+    def player_season_stats(self, team: str, season: int) -> list[dict]:
+        """Every rostered player's season stats and advanced ratings (one call)."""
+        return self.get("/stats/player/season", team=team, season=season)
+
 
 # --- translation -------------------------------------------------------------
 
@@ -142,3 +146,48 @@ def to_game(data: dict) -> Game:
                 game.players[pid] = Player(pid, team_ids[person["team"]], person["name"])
     game.analyze(plays)
     return game
+
+
+def _split(p: dict, key: str) -> dict:
+    s = p.get(key) or {}
+    return {"made": s.get("made") or 0, "attempted": s.get("attempted") or 0, "pct": s.get("pct")}
+
+
+def to_player_advanced(p: dict) -> dict:
+    """One CBBD player-season-stats record -> our shape (schemas.PlayerAdvanced), keyed by
+    team_id and athlete_id so the caller can store and look it up without touching CBBD's
+    field names again. Season totals (minutes, points, ...), not per-game averages -- CBBD
+    reports it that way, same as our own stint-based Ratings elsewhere."""
+    rebounds = p.get("rebounds") or {}
+    win_shares = p.get("winShares") or {}
+    return {
+        "team_id": str(p["teamId"]),
+        "athlete_id": str(p["athleteId"]),
+        "games": p.get("games") or 0,
+        "starts": p.get("starts") or 0,
+        "minutes": p.get("minutes") or 0,
+        "points": p.get("points") or 0,
+        "assists": p.get("assists") or 0,
+        "turnovers": p.get("turnovers") or 0,
+        "steals": p.get("steals") or 0,
+        "blocks": p.get("blocks") or 0,
+        "fouls": p.get("fouls") or 0,
+        "usage": p.get("usage"),
+        "offensive_rating": p.get("offensiveRating"),
+        "defensive_rating": p.get("defensiveRating"),
+        "net_rating": p.get("netRating"),
+        "porpag": p.get("PORPAG"),
+        "effective_fg_pct": p.get("effectiveFieldGoalPct"),
+        "true_shooting_pct": p.get("trueShootingPct"),
+        "assists_turnover_ratio": p.get("assistsTurnoverRatio"),
+        "free_throw_rate": p.get("freeThrowRate"),
+        "offensive_rebound_pct": p.get("offensiveReboundPct"),
+        "field_goals": _split(p, "fieldGoals"),
+        "two_point_field_goals": _split(p, "twoPointFieldGoals"),
+        "three_point_field_goals": _split(p, "threePointFieldGoals"),
+        "free_throws": _split(p, "freeThrows"),
+        "rebounds": {"offensive": rebounds.get("offensive") or 0, "defensive": rebounds.get("defensive") or 0,
+                     "total": rebounds.get("total") or 0},
+        "win_shares": {"offensive": win_shares.get("offensive") or 0, "defensive": win_shares.get("defensive") or 0,
+                       "total": win_shares.get("total") or 0, "total_per_40": win_shares.get("totalPer40") or 0},
+    }

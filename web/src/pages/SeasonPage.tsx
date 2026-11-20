@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import type { Ratings } from "../api/client";
+import type { Player, Ratings } from "../api/client";
 import { useSeason, useTeam } from "../api/queries";
 import { LineupTable, tone } from "../components/LineupTable";
 import { OnOffTable } from "../components/OnOffTable";
+import { PlayerModal } from "../components/PlayerModal";
 import { Failed, Loading, SectionTitle } from "../components/Status";
 import { currentSeason, signed } from "../lib/format";
+import { advancedById } from "../lib/players";
 
 const SEASONS = [currentSeason(), currentSeason() - 1];
 const ON_OFF_MIN_MINUTES = 0.1; // share of the team's minutes a player needs for the on/off table
@@ -20,6 +22,7 @@ export function SeasonPage() {
   const team = useTeam();
   const data = useSeason(team.data?.id, season, excludeGarbage);
   const [chosenMinutes, setChosenMinutes] = useState<number | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params);
@@ -37,9 +40,13 @@ export function SeasonPage() {
   const minMinutes = chosenMinutes ?? ((totals?.minutes ?? 0) >= 600 ? 40 : 5);
   const shown = lineups.filter((l) => l.minutes >= minMinutes);
   const regulars = on_off.filter((r) => totals && r.on.minutes >= ON_OFF_MIN_MINUTES * totals.minutes);
+  const advanced = advancedById(on_off);
 
   return (
     <article className="space-y-8">
+      {selectedPlayer && (
+        <PlayerModal player={selectedPlayer} advanced={advanced[selectedPlayer.id]} onClose={() => setSelectedPlayer(null)} />
+      )}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <select
           id="season"
@@ -94,7 +101,11 @@ export function SeasonPage() {
           />
           <span className="shrink-0 font-semibold whitespace-nowrap text-ku-blue tabular-nums dark:text-ku-sky">{minMinutes} min</span>
         </label>
-        <LineupTable lineups={shown} empty="No lineup has played that many minutes together. Lower the slider." />
+        <LineupTable
+          lineups={shown}
+          empty="No lineup has played that many minutes together. Lower the slider."
+          onSelectPlayer={setSelectedPlayer}
+        />
         <p className="mt-3 text-xs text-slate-500">
           {shown.length} of {lineups.length} lineups, best net rating first. Small samples swing hard.
         </p>
@@ -102,7 +113,7 @@ export function SeasonPage() {
 
       <section>
         <SectionTitle>On/off</SectionTitle>
-        <OnOffTable rows={regulars} />
+        <OnOffTable rows={regulars} onSelectPlayer={setSelectedPlayer} />
         <p className="mt-3 text-xs text-slate-500">
           Team net rating with the player on the floor minus with him off: a measure of how the team does, not his own
           scoring. Players with at least {Math.round(ON_OFF_MIN_MINUTES * 100)}% of the team's minutes. Blowouts skew it;

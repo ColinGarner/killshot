@@ -1,17 +1,27 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { useGame, useTeam } from "../api/queries";
+import type { Player } from "../api/client";
+import { useGame, useSeason, useTeam } from "../api/queries";
 import { Killshots } from "../components/Killshots";
 import { LineupTable } from "../components/LineupTable";
 import { LiveBar, OnFloor } from "../components/LiveBar";
+import { PlayerModal } from "../components/PlayerModal";
 import { Failed, Loading, SectionTitle } from "../components/Status";
 import { WinProbChart } from "../components/WinProbChart";
-import { gameDate, venuePrefix } from "../lib/format";
+import { currentSeason, gameDate, venuePrefix } from "../lib/format";
+import { advancedById } from "../lib/players";
 
 /** One game: score, win probability over time, killshots, best and worst lineups. */
 export function GamePage() {
   const { gameId = "" } = useParams();
   const team = useTeam();
   const game = useGame(team.data?.id, gameId);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  // The season a player's stats come from is the game's own season, not necessarily the
+  // current one -- an old game should still show that season's numbers, not this year's.
+  const season = game.data ? currentSeason(new Date(game.data.game.start_at)) : undefined;
+  const seasonData = useSeason(season !== undefined ? team.data?.id : undefined, season ?? 0, false);
+  const advanced = seasonData.data ? advancedById(seasonData.data.on_off) : {};
 
   if (team.error) return <Failed error={team.error} />;
   if (game.error) return <Failed error={game.error} />;
@@ -20,6 +30,9 @@ export function GamePage() {
   const { game: g, win_prob, killshots, lineups, min_poss, live } = game.data;
   return (
     <article className="space-y-8">
+      {selectedPlayer && (
+        <PlayerModal player={selectedPlayer} advanced={advanced[selectedPlayer.id]} onClose={() => setSelectedPlayer(null)} />
+      )}
       <LiveBar detail={game.data} team={team.data?.name ?? ""} />
       <div>
         <Link to="/games" className="text-sm text-ku-blue hover:underline dark:text-ku-sky">
@@ -41,7 +54,7 @@ export function GamePage() {
       {live && live.on_floor.length > 0 && g.state !== "post" && (
         <section>
           <SectionTitle>On the floor</SectionTitle>
-          <OnFloor detail={game.data} />
+          <OnFloor detail={game.data} onSelectPlayer={setSelectedPlayer} />
         </section>
       )}
 
@@ -62,12 +75,16 @@ export function GamePage() {
 
       <section>
         <SectionTitle>Most efficient lineups</SectionTitle>
-        <LineupTable lineups={lineups.best} empty={`No lineup played ${min_poss}+ possessions.`} />
+        <LineupTable lineups={lineups.best} empty={`No lineup played ${min_poss}+ possessions.`} onSelectPlayer={setSelectedPlayer} />
       </section>
 
       <section>
         <SectionTitle>Least efficient lineups</SectionTitle>
-        <LineupTable lineups={lineups.worst} empty={`Not enough lineups with ${min_poss}+ possessions.`} />
+        <LineupTable
+          lineups={lineups.worst}
+          empty={`Not enough lineups with ${min_poss}+ possessions.`}
+          onSelectPlayer={setSelectedPlayer}
+        />
         <p className="mt-3 text-xs text-slate-500">
           Lineups with {min_poss}+ possessions together. Net is points per 100 possessions scored minus allowed; +/− is the
           raw score margin while that five played. Small samples swing hard.

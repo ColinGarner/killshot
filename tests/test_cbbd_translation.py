@@ -46,3 +46,38 @@ def test_a_game_without_win_probability_still_loads():
     game = cbbd.to_game(data)
     assert game.win_prob == []
     assert game.quality("131") == {**game.quality("131"), "has_win_prob": False, "points_match": True}
+
+
+# --- player season stats -----------------------------------------------------
+
+def raw_player_season_stat() -> dict:
+    """One CBBD /stats/player/season record, shaped like a real one."""
+    return {
+        "teamId": 131, "athleteId": 5642, "name": "Tre White", "games": 5, "starts": 5,
+        "minutes": 129, "points": 97, "assists": 6, "turnovers": 4, "steals": 3, "blocks": 1, "fouls": 3,
+        "usage": 27.5, "offensiveRating": 141.1, "defensiveRating": 95.3, "netRating": 45.8, "PORPAG": 6.2,
+        "effectiveFieldGoalPct": 64.8, "trueShootingPct": 0.678, "assistsTurnoverRatio": 1.5,
+        "freeThrowRate": 39.3, "offensiveReboundPct": 31.8,
+        "fieldGoals": {"made": 34, "attempted": 61, "pct": 55.7},
+        "twoPointFieldGoals": {"made": 23, "attempted": 37, "pct": 62.2},
+        "threePointFieldGoals": {"made": 11, "attempted": 24, "pct": 45.8},
+        "freeThrows": {"made": 18, "attempted": 24, "pct": 75},
+        "rebounds": {"offensive": 7, "defensive": 15, "total": 22},
+        "winShares": {"offensive": 0.7, "defensive": 0.3, "total": 1, "totalPer40": 0.31},
+    }
+
+
+def test_player_advanced_is_keyed_by_team_and_athlete():
+    row = cbbd.to_player_advanced(raw_player_season_stat())
+    assert (row["team_id"], row["athlete_id"]) == ("131", "5642")
+    assert (row["games"], row["points"], row["porpag"]) == (5, 97, 6.2)
+    assert row["win_shares"] == {"offensive": 0.7, "defensive": 0.3, "total": 1, "total_per_40": 0.31}
+    assert row["field_goals"] == {"made": 34, "attempted": 61, "pct": 55.7}
+
+
+def test_player_advanced_tolerates_missing_sub_objects():
+    raw = raw_player_season_stat()
+    del raw["rebounds"], raw["winShares"], raw["fieldGoals"]
+    row = cbbd.to_player_advanced(raw)
+    assert row["rebounds"] == {"offensive": 0, "defensive": 0, "total": 0}
+    assert row["field_goals"] == {"made": 0, "attempted": 0, "pct": None}

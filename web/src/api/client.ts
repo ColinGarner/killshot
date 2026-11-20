@@ -7,6 +7,7 @@ export const api = createClient<paths>({ baseUrl: "" });
 
 type Schemas = components["schemas"];
 export type Team = Schemas["Team"];
+export type Player = Schemas["Player"];
 export type GameSummary = Schemas["GameSummary"];
 export type GameDetail = Schemas["GameDetail"];
 export type Lineup = Schemas["Lineup"];
@@ -14,6 +15,7 @@ export type WinProbPoint = Schemas["WinProbPoint"];
 export type Killshot = Schemas["Killshot"];
 export type Ratings = Schemas["Ratings"];
 export type OnOff = Schemas["OnOff"];
+export type PlayerAdvanced = Schemas["PlayerAdvanced"];
 export type Season = Schemas["Season"];
 export type PushSubscriptionBody = Schemas["PushSubscription"];
 

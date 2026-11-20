@@ -66,3 +66,17 @@ def test_push_subscriptions_round_trip_and_can_be_removed(conn):
 
     db.delete_subscription(conn, "https://push.example/a")
     assert [s["endpoint"] for s in db.push_subscriptions(conn)] == ["https://push.example/b"]
+
+
+def test_player_season_stats_round_trip_and_replace(conn):
+    conn.execute("INSERT INTO teams (id, name) VALUES (%s, %s)", (KANSAS, "Kansas"))
+    rows = [{"team_id": KANSAS, "athlete_id": "5642", "games": 5, "points": 97},
+            {"team_id": KANSAS, "athlete_id": "9001", "games": 5, "points": 40}]
+    db.save_player_season_stats(conn, KANSAS, 2027, rows)
+    stats = db.player_season_stats(conn, KANSAS, 2027)
+    assert set(stats) == {"5642", "9001"} and stats["5642"]["points"] == 97
+
+    # A resync (fewer players, updated numbers) replaces the whole team-season, not merges.
+    db.save_player_season_stats(conn, KANSAS, 2027, [{"team_id": KANSAS, "athlete_id": "5642", "games": 6, "points": 110}])
+    stats = db.player_season_stats(conn, KANSAS, 2027)
+    assert set(stats) == {"5642"} and stats["5642"]["points"] == 110

@@ -86,6 +86,28 @@ def test_excluding_garbage_time_changes_the_season(api):
     assert competitive["minutes"] < full["minutes"]
 
 
+def test_on_off_carries_cbbd_advanced_stats_once_synced(api, conn):
+    white_id = next(pid for pid, name in conn.execute("SELECT id, name FROM players").fetchall() if name == "Tre White")
+    db.save_player_season_stats(conn, KANSAS, 2027, [{
+        "team_id": KANSAS, "athlete_id": white_id, "games": 5, "starts": 5, "minutes": 129, "points": 97,
+        "assists": 6, "turnovers": 4, "steals": 3, "blocks": 1, "fouls": 3, "usage": 27.5,
+        "offensive_rating": 141.1, "defensive_rating": 95.3, "net_rating": 45.8, "porpag": 6.2,
+        "effective_fg_pct": 64.8, "true_shooting_pct": 0.678, "assists_turnover_ratio": 1.5,
+        "free_throw_rate": 39.3, "offensive_rebound_pct": 31.8,
+        "field_goals": {"made": 34, "attempted": 61, "pct": 55.7},
+        "two_point_field_goals": {"made": 23, "attempted": 37, "pct": 62.2},
+        "three_point_field_goals": {"made": 11, "attempted": 24, "pct": 45.8},
+        "free_throws": {"made": 18, "attempted": 24, "pct": 75},
+        "rebounds": {"offensive": 7, "defensive": 15, "total": 22},
+        "win_shares": {"offensive": 0.7, "defensive": 0.3, "total": 1, "total_per_40": 0.31},
+    }])
+    on_off = api.get(f"/api/teams/{KANSAS}/seasons/2027").json()["on_off"]
+    by_name = {r["player"]["name"]: r for r in on_off}
+    assert by_name["Tre White"]["advanced"]["porpag"] == 6.2
+    assert by_name["Tre White"]["advanced"]["field_goals"] == {"made": 34, "attempted": 61, "pct": 55.7}
+    assert all(r["advanced"] is None for name, r in by_name.items() if name != "Tre White")
+
+
 # --- serving the frontend (no database needed) -----------------------------------
 
 @pytest.fixture()
