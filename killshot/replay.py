@@ -9,6 +9,10 @@ Downloads ESPN's summary once, then every second moves the game clock forward,
 cuts the plays off at that moment, builds the live page and saves it to
 `live_state`, exactly as the worker does during a real game. At the end the
 live row is deleted, so the game goes back to its normal finished page.
+
+Also sends real push notifications (see push.py) for any killshot the replay
+passes through, so `killshot replay` doubles as a way to test push alerts
+end to end: subscribe in the browser, then run a replay and watch for them.
 """
 import argparse
 import gzip
@@ -17,7 +21,7 @@ import os
 import time
 from pathlib import Path
 
-from . import db, live
+from . import db, live, push
 from .clock import elapsed, label
 from .sources import espn
 
@@ -67,7 +71,11 @@ def main() -> None:
             for n in cut_points(summary, args.speed):
                 game = espn.to_game(live.snapshot(summary, n))
                 for team_id, row in rows:
+                    prev = db.live_page(conn, args.game, team_id)
                     page = live.build(row, team_id, game)
+                    team_name = row["home_name"] if row["home_team_id"] == team_id else row["away_name"]
+                    for note in push.notify_new_killshots(conn, prev[0] if prev else None, page, team_name):
+                        print(note, flush=True)
                     db.save_live(conn, args.game, team_id, page)
                 g = page["game"]
                 line = (f"{page['live']['clock'] or 'Tip-off':>10}  {g['pts']}-{g['opp_pts']} vs {g['opponent']['name']}"

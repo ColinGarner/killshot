@@ -217,6 +217,102 @@
      }
     }
    }
+  },
+  "/api/push/vapid-key": {
+   "get": {
+    "summary": "Vapid Key",
+    "description": "The site's public VAPID key, so the browser can subscribe. None if push isn't set up.",
+    "operationId": "vapid_key_api_push_vapid_key_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VapidKey"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/push/subscribe": {
+   "post": {
+    "summary": "Push Subscribe",
+    "description": "Save a browser's push subscription. The worker pushes to it when a new killshot shows up.",
+    "operationId": "push_subscribe_api_push_subscribe_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushSubscription"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/push/unsubscribe": {
+   "post": {
+    "summary": "Push Unsubscribe",
+    "operationId": "push_unsubscribe_api_push_unsubscribe_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushUnsubscribe"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -667,6 +763,17 @@
     "title": "Live",
     "description": "Only while a game is on (and until CBBD's official record replaces it after the final)."
    },
+   "Ok": {
+    "properties": {
+     "ok": {
+      "type": "boolean",
+      "title": "Ok",
+      "default": true
+     }
+    },
+    "type": "object",
+    "title": "Ok"
+   },
    "OnOff": {
     "properties": {
      "player": {
@@ -721,6 +828,55 @@
      "short_name"
     ],
     "title": "Player"
+   },
+   "PushSubscription": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "title": "Endpoint"
+     },
+     "keys": {
+      "$ref": "#/components/schemas/PushSubscriptionKeys"
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint",
+     "keys"
+    ],
+    "title": "PushSubscription",
+    "description": "What the browser's PushManager.subscribe() hands back, reshaped for the API."
+   },
+   "PushSubscriptionKeys": {
+    "properties": {
+     "p256dh": {
+      "type": "string",
+      "title": "P256Dh"
+     },
+     "auth": {
+      "type": "string",
+      "title": "Auth"
+     }
+    },
+    "type": "object",
+    "required": [
+     "p256dh",
+     "auth"
+    ],
+    "title": "PushSubscriptionKeys"
+   },
+   "PushUnsubscribe": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "title": "Endpoint"
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint"
+    ],
+    "title": "PushUnsubscribe"
    },
    "Ratings": {
     "properties": {
@@ -937,6 +1093,26 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "VapidKey": {
+    "properties": {
+     "public_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Key"
+     }
+    },
+    "type": "object",
+    "required": [
+     "public_key"
+    ],
+    "title": "VapidKey"
    },
    "WinProbPoint": {
     "properties": {

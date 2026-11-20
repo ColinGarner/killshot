@@ -366,3 +366,24 @@ def seconds_until_next_tip(conn: psycopg.Connection, team_names: list[str]) -> f
 def live_pages(conn: psycopg.Connection, game_id: str) -> dict[str, dict]:
     """Team id -> live page, for every tracked team's live row of one game."""
     return dict(conn.execute("SELECT team_id, payload FROM live_state WHERE game_id = %s", (game_id,)).fetchall())
+
+
+# --- push notifications ----------------------------------------------------------
+
+def save_subscription(conn: psycopg.Connection, endpoint: str, p256dh: str, auth: str) -> None:
+    """Save a browser's push subscription, or refresh its keys if it already exists
+    (the browser can hand back the same endpoint with new keys)."""
+    conn.execute(
+        """INSERT INTO push_subscriptions (endpoint, p256dh, auth) VALUES (%s, %s, %s)
+           ON CONFLICT (endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth""",
+        (endpoint, p256dh, auth))
+
+
+def delete_subscription(conn: psycopg.Connection, endpoint: str) -> None:
+    conn.execute("DELETE FROM push_subscriptions WHERE endpoint = %s", (endpoint,))
+
+
+def push_subscriptions(conn: psycopg.Connection) -> list[dict]:
+    """Every saved subscription, as {endpoint, p256dh, auth}, ready for push.send()."""
+    cur = conn.execute("SELECT endpoint, p256dh, auth FROM push_subscriptions")
+    return [{"endpoint": e, "p256dh": p, "auth": a} for e, p, a in cur.fetchall()]

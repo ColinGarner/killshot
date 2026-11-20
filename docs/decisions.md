@@ -270,3 +270,22 @@ doesn't need its own machine. `/healthz` fails when the worker's heartbeat is
 older than 30 minutes, so a stuck worker shows up as an unhealthy service.
 **Gave up:** scaling the web part separately and restarting one without the
 other. Splitting later is a second service with the start command `killshot worker`.
+
+## 31. Push notifications use pywebpush, not a hand-rolled sender
+**Decided:** A fan subscribes once in the browser (Web Push API); the worker
+pushes a notification when a new killshot shows up in a live game (`push.py`,
+called from `worker.py` and `replay.py` so a replay exercises the same path).
+Sending uses `pywebpush`, which brings in `cryptography`, `aiohttp` and
+`requests` as transitive dependencies. `killshot vapid` generates the site's
+key pair; subscriptions are stored in `push_subscriptions`, keyed by endpoint.
+**Why:** A push message is signed (VAPID, a JWT over ES256) and its payload is
+encrypted (`aes128gcm`, an ECDH + HKDF + AES-GCM construction) per the Web Push
+spec. Both are easy to get subtly wrong by hand; `pywebpush` is the standard,
+well-tested implementation, and the dependency weight is one pip install, not
+code we maintain.
+**Gave up:** a small dependency footprint for this one feature. A killshot only
+enters the `killshots` list once the run is over (the other team scores again,
+or the game ends -- see `events.killshots`), so the push arrives then, not the
+instant the run passes 10 points; a "building a run" alert would need separate
+logic. iOS Safari only allows push after the site is added to the home screen
+(7.6, not done yet), so this doesn't reach iOS fans until then.

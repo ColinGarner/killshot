@@ -121,3 +121,26 @@ class Health(BaseModel):
     database: str
     worker_heartbeat_seconds_ago: float | None
     worker_note: str | None
+
+
+class VapidKey(BaseModel):
+    public_key: str | None   # None if the server has no VAPID_PUBLIC_KEY configured
+
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscription(BaseModel):
+    """What the browser's PushManager.subscribe() hands back, reshaped for the API."""
+    endpoint: str
+    keys: PushSubscriptionKeys
+
+
+class PushUnsubscribe(BaseModel):
+    endpoint: str
+
+
+class Ok(BaseModel):
+    ok: bool = True

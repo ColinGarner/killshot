@@ -105,6 +105,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/push/vapid-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vapid Key
+         * @description The site's public VAPID key, so the browser can subscribe. None if push isn't set up.
+         */
+        get: operations["vapid_key_api_push_vapid_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Push Subscribe
+         * @description Save a browser's push subscription. The worker pushes to it when a new killshot shows up.
+         */
+        post: operations["push_subscribe_api_push_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Push Unsubscribe */
+        post: operations["push_unsubscribe_api_push_unsubscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -248,6 +305,14 @@ export interface components {
             /** On Floor */
             on_floor: components["schemas"]["Player"][];
         };
+        /** Ok */
+        Ok: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+        };
         /** OnOff */
         OnOff: {
             player: components["schemas"]["Player"];
@@ -264,6 +329,27 @@ export interface components {
             name: string;
             /** Short Name */
             short_name: string;
+        };
+        /**
+         * PushSubscription
+         * @description What the browser's PushManager.subscribe() hands back, reshaped for the API.
+         */
+        PushSubscription: {
+            /** Endpoint */
+            endpoint: string;
+            keys: components["schemas"]["PushSubscriptionKeys"];
+        };
+        /** PushSubscriptionKeys */
+        PushSubscriptionKeys: {
+            /** P256Dh */
+            p256dh: string;
+            /** Auth */
+            auth: string;
+        };
+        /** PushUnsubscribe */
+        PushUnsubscribe: {
+            /** Endpoint */
+            endpoint: string;
         };
         /**
          * Ratings
@@ -329,6 +415,11 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VapidKey */
+        VapidKey: {
+            /** Public Key */
+            public_key: string | null;
         };
         /** WinProbPoint */
         WinProbPoint: {
@@ -479,6 +570,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Season"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vapid_key_api_push_vapid_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VapidKey"];
+                };
+            };
+        };
+    };
+    push_subscribe_api_push_subscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscription"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    push_unsubscribe_api_push_unsubscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushUnsubscribe"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
                 };
             };
             /** @description Validation Error */

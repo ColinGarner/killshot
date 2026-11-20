@@ -14,6 +14,7 @@
     killshot reprocess      rebuild stored games from their saved raw data
     killshot replay GAME    play a finished game back as if live (tests the live view)
     killshot openapi PATH   write the API schema (used by `npm run gen:api`)
+    killshot vapid          generate a VAPID key pair for push notifications
 
 Settings come from .env in the repo folder (copy .env.sample to start).
 """
@@ -32,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent  # the repo folder: .env, web/, mi
 
 # Subcommands that run an existing module's main(): `killshot load` -> killshot.load.main()
 TOOLS = {name: f"killshot.{name}" for name in
-         ("migrate", "load", "inspect", "season", "worker", "reprocess", "replay", "openapi")}
+         ("migrate", "load", "inspect", "season", "worker", "reprocess", "replay", "openapi", "vapid")}
 
 
 def load_env(path: Path = ROOT / ".env") -> None:

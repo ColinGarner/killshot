@@ -165,3 +165,25 @@ def test_once_the_live_page_is_cleared_the_official_page_returns(api, conn):
     db.clear_live(conn, KENTUCKY)
     g = api.get(f"/api/teams/{KANSAS}/games/{KENTUCKY}").json()
     assert g["live"] is None and not g["game"]["live"] and g["game"]["pts"] == 89
+
+
+# --- push notifications -------------------------------------------------------
+
+def test_the_vapid_key_is_none_until_its_configured(api):
+    assert api.get("/api/push/vapid-key").json() == {"public_key": None}
+
+
+def test_the_vapid_key_is_served_once_set(api, monkeypatch):
+    monkeypatch.setenv("VAPID_PUBLIC_KEY", "a-test-key")
+    assert api.get("/api/push/vapid-key").json() == {"public_key": "a-test-key"}
+
+
+def test_subscribing_and_unsubscribing(api, conn):
+    body = {"endpoint": "https://push.example/sub", "keys": {"p256dh": "p", "auth": "a"}}
+    r = api.post("/api/push/subscribe", json=body)
+    assert r.status_code == 200 and r.json() == {"ok": True}
+    assert [s["endpoint"] for s in db.push_subscriptions(conn)] == [body["endpoint"]]
+
+    r = api.post("/api/push/unsubscribe", json={"endpoint": body["endpoint"]})
+    assert r.status_code == 200 and r.json() == {"ok": True}
+    assert db.push_subscriptions(conn) == []
