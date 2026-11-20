@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { GameDetail } from "../api/client";
+import type { GameDetail, Player } from "../api/client";
 import { clockTime, currentRun, isStale } from "../lib/live";
 
 /** Re-render every 15 seconds, so "Updated" turns amber on time even if no new data arrives. */
@@ -65,8 +65,9 @@ export function LiveBar({ detail, team }: { detail: GameDetail; team: string }) 
   );
 }
 
-/** Who is on the floor right now. */
-export function OnFloor({ detail }: { detail: GameDetail }) {
+/** Who is on the floor right now. A pill opens the player's season stats
+ * (see PlayerModal) when `onSelectPlayer` is given. */
+export function OnFloor({ detail, onSelectPlayer }: { detail: GameDetail; onSelectPlayer?: (player: Player) => void }) {
   const five = detail.live?.on_floor ?? [];
   if (!five.length || detail.game.state === "post") return null;
   return (
@@ -74,12 +75,24 @@ export function OnFloor({ detail }: { detail: GameDetail }) {
       {[...five]
         .sort((a, b) => a.short_name.localeCompare(b.short_name))
         .map((p) => (
-          <li
-            key={p.id}
-            title={p.name}
-            className="rounded-full border border-ku-blue/30 bg-ku-blue/5 px-3 py-1 text-sm font-semibold dark:border-ku-sky/30 dark:bg-ku-sky/10"
-          >
-            {p.short_name}
+          <li key={p.id}>
+            {onSelectPlayer ? (
+              <button
+                type="button"
+                title={p.name}
+                onClick={() => onSelectPlayer(p)}
+                className="rounded-full border border-ku-blue/30 bg-ku-blue/5 px-3 py-1 text-sm font-semibold hover:bg-ku-blue/10 dark:border-ku-sky/30 dark:bg-ku-sky/10 dark:hover:bg-ku-sky/20"
+              >
+                {p.short_name}
+              </button>
+            ) : (
+              <span
+                title={p.name}
+                className="block rounded-full border border-ku-blue/30 bg-ku-blue/5 px-3 py-1 text-sm font-semibold dark:border-ku-sky/30 dark:bg-ku-sky/10"
+              >
+                {p.short_name}
+              </span>
+            )}
           </li>
         ))}
     </ul>

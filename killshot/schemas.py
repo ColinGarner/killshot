@@ -100,11 +100,64 @@ class GameDetail(BaseModel):
     live: Live | None = None  # set while the page is built from ESPN's live feed
 
 
+class ShootingSplit(BaseModel):
+    made: int
+    attempted: int
+    pct: float | None
+
+
+class Rebounds(BaseModel):
+    offensive: int
+    defensive: int
+    total: int
+
+
+class WinShares(BaseModel):
+    offensive: float
+    defensive: float
+    total: float
+    total_per_40: float
+
+
+class PlayerAdvanced(BaseModel):
+    """A player's season so far, from CollegeBasketballData's own stats: usage, efficiency
+    ratings and shot-type detail. Distinct from Ratings above, which is our own stint-based
+    possession formula; this is CBBD's, refreshed once a sync by the worker (see worker.py's
+    sync_player_stats). Counting stats (minutes, points, ...) are season totals, not
+    per-game averages -- CBBD reports them that way, same as Ratings does."""
+    games: int
+    starts: int
+    minutes: float
+    points: int
+    assists: int
+    turnovers: int
+    steals: int
+    blocks: int
+    fouls: int
+    usage: float | None             # share of the team's possessions he used while on the floor
+    offensive_rating: float | None
+    defensive_rating: float | None
+    net_rating: float | None
+    porpag: float | None            # points over a replacement-level player, per adjusted game
+    effective_fg_pct: float | None
+    true_shooting_pct: float | None
+    assists_turnover_ratio: float | None
+    free_throw_rate: float | None
+    offensive_rebound_pct: float | None
+    field_goals: ShootingSplit
+    two_point_field_goals: ShootingSplit
+    three_point_field_goals: ShootingSplit
+    free_throws: ShootingSplit
+    rebounds: Rebounds
+    win_shares: WinShares
+
+
 class OnOff(BaseModel):
     player: Player
     on: Ratings
     off: Ratings | None
     on_off: float          # team net rating with him on, minus off
+    advanced: PlayerAdvanced | None = None  # None until the worker has synced it for this player
 
 
 class Season(BaseModel):

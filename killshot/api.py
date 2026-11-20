@@ -106,10 +106,12 @@ def season(team_id: str, season: int, min_minutes: float = 20, exclude_garbage: 
     name = require_team(team_id, conn)
     stints = db.stints_for(conn, team_id, season=season)
     people = db.players(conn)
+    advanced = db.player_season_stats(conn, team_id, season)
     lineups = [r for r in rollup.lineups(stints, exclude_garbage) if r["minutes"] >= min_minutes]
     on_off = []
     for r in rollup.on_off(stints, exclude_garbage):
-        on_off.append({**r, "player": player(people, r.pop("player_id"))})
+        player_id = r.pop("player_id")
+        on_off.append({**r, "player": player(people, player_id), "advanced": advanced.get(player_id)})
     return {
         "team": {"id": team_id, "name": name}, "season": season, "exclude_garbage": exclude_garbage,
         "totals": rollup.team_totals(stints, exclude_garbage),

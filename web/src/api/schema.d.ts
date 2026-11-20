@@ -320,6 +320,7 @@ export interface components {
             off: components["schemas"]["Ratings"] | null;
             /** On Off */
             on_off: number;
+            advanced?: components["schemas"]["PlayerAdvanced"] | null;
         };
         /** Player */
         Player: {
@@ -329,6 +330,60 @@ export interface components {
             name: string;
             /** Short Name */
             short_name: string;
+        };
+        /**
+         * PlayerAdvanced
+         * @description A player's season so far, from CollegeBasketballData's own stats: usage, efficiency
+         *     ratings and shot-type detail. Distinct from Ratings above, which is our own stint-based
+         *     possession formula; this is CBBD's, refreshed once a sync by the worker (see worker.py's
+         *     sync_player_stats). Counting stats (minutes, points, ...) are season totals, not
+         *     per-game averages -- CBBD reports them that way, same as Ratings does.
+         */
+        PlayerAdvanced: {
+            /** Games */
+            games: number;
+            /** Starts */
+            starts: number;
+            /** Minutes */
+            minutes: number;
+            /** Points */
+            points: number;
+            /** Assists */
+            assists: number;
+            /** Turnovers */
+            turnovers: number;
+            /** Steals */
+            steals: number;
+            /** Blocks */
+            blocks: number;
+            /** Fouls */
+            fouls: number;
+            /** Usage */
+            usage: number | null;
+            /** Offensive Rating */
+            offensive_rating: number | null;
+            /** Defensive Rating */
+            defensive_rating: number | null;
+            /** Net Rating */
+            net_rating: number | null;
+            /** Porpag */
+            porpag: number | null;
+            /** Effective Fg Pct */
+            effective_fg_pct: number | null;
+            /** True Shooting Pct */
+            true_shooting_pct: number | null;
+            /** Assists Turnover Ratio */
+            assists_turnover_ratio: number | null;
+            /** Free Throw Rate */
+            free_throw_rate: number | null;
+            /** Offensive Rebound Pct */
+            offensive_rebound_pct: number | null;
+            field_goals: components["schemas"]["ShootingSplit"];
+            two_point_field_goals: components["schemas"]["ShootingSplit"];
+            three_point_field_goals: components["schemas"]["ShootingSplit"];
+            free_throws: components["schemas"]["ShootingSplit"];
+            rebounds: components["schemas"]["Rebounds"];
+            win_shares: components["schemas"]["WinShares"];
         };
         /**
          * PushSubscription
@@ -383,6 +438,15 @@ export interface components {
             /** Ftr */
             ftr: number | null;
         };
+        /** Rebounds */
+        Rebounds: {
+            /** Offensive */
+            offensive: number;
+            /** Defensive */
+            defensive: number;
+            /** Total */
+            total: number;
+        };
         /** Season */
         Season: {
             team: components["schemas"]["Team"];
@@ -395,6 +459,15 @@ export interface components {
             lineups: components["schemas"]["Lineup"][];
             /** On Off */
             on_off: components["schemas"]["OnOff"][];
+        };
+        /** ShootingSplit */
+        ShootingSplit: {
+            /** Made */
+            made: number;
+            /** Attempted */
+            attempted: number;
+            /** Pct */
+            pct: number | null;
         };
         /** Team */
         Team: {
@@ -433,6 +506,17 @@ export interface components {
             pts: number;
             /** Opp Pts */
             opp_pts: number;
+        };
+        /** WinShares */
+        WinShares: {
+            /** Offensive */
+            offensive: number;
+            /** Defensive */
+            defensive: number;
+            /** Total */
+            total: number;
+            /** Total Per 40 */
+            total_per_40: number;
         };
     };
     responses: never;

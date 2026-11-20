@@ -795,6 +795,16 @@
      "on_off": {
       "type": "number",
       "title": "On Off"
+     },
+     "advanced": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PlayerAdvanced"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -828,6 +838,204 @@
      "short_name"
     ],
     "title": "Player"
+   },
+   "PlayerAdvanced": {
+    "properties": {
+     "games": {
+      "type": "integer",
+      "title": "Games"
+     },
+     "starts": {
+      "type": "integer",
+      "title": "Starts"
+     },
+     "minutes": {
+      "type": "number",
+      "title": "Minutes"
+     },
+     "points": {
+      "type": "integer",
+      "title": "Points"
+     },
+     "assists": {
+      "type": "integer",
+      "title": "Assists"
+     },
+     "turnovers": {
+      "type": "integer",
+      "title": "Turnovers"
+     },
+     "steals": {
+      "type": "integer",
+      "title": "Steals"
+     },
+     "blocks": {
+      "type": "integer",
+      "title": "Blocks"
+     },
+     "fouls": {
+      "type": "integer",
+      "title": "Fouls"
+     },
+     "usage": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Usage"
+     },
+     "offensive_rating": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Offensive Rating"
+     },
+     "defensive_rating": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Defensive Rating"
+     },
+     "net_rating": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Net Rating"
+     },
+     "porpag": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Porpag"
+     },
+     "effective_fg_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Effective Fg Pct"
+     },
+     "true_shooting_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "True Shooting Pct"
+     },
+     "assists_turnover_ratio": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Assists Turnover Ratio"
+     },
+     "free_throw_rate": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free Throw Rate"
+     },
+     "offensive_rebound_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Offensive Rebound Pct"
+     },
+     "field_goals": {
+      "$ref": "#/components/schemas/ShootingSplit"
+     },
+     "two_point_field_goals": {
+      "$ref": "#/components/schemas/ShootingSplit"
+     },
+     "three_point_field_goals": {
+      "$ref": "#/components/schemas/ShootingSplit"
+     },
+     "free_throws": {
+      "$ref": "#/components/schemas/ShootingSplit"
+     },
+     "rebounds": {
+      "$ref": "#/components/schemas/Rebounds"
+     },
+     "win_shares": {
+      "$ref": "#/components/schemas/WinShares"
+     }
+    },
+    "type": "object",
+    "required": [
+     "games",
+     "starts",
+     "minutes",
+     "points",
+     "assists",
+     "turnovers",
+     "steals",
+     "blocks",
+     "fouls",
+     "usage",
+     "offensive_rating",
+     "defensive_rating",
+     "net_rating",
+     "porpag",
+     "effective_fg_pct",
+     "true_shooting_pct",
+     "assists_turnover_ratio",
+     "free_throw_rate",
+     "offensive_rebound_pct",
+     "field_goals",
+     "two_point_field_goals",
+     "three_point_field_goals",
+     "free_throws",
+     "rebounds",
+     "win_shares"
+    ],
+    "title": "PlayerAdvanced",
+    "description": "A player's season so far, from CollegeBasketballData's own stats: usage, efficiency\nratings and shot-type detail. Distinct from Ratings above, which is our own stint-based\npossession formula; this is CBBD's, refreshed once a sync by the worker (see worker.py's\nsync_player_stats). Counting stats (minutes, points, ...) are season totals, not\nper-game averages -- CBBD reports them that way, same as Ratings does."
    },
    "PushSubscription": {
     "properties": {
@@ -987,6 +1195,29 @@
     "title": "Ratings",
     "description": "Tempo-free numbers for a stretch of play (see killshot/box.py)."
    },
+   "Rebounds": {
+    "properties": {
+     "offensive": {
+      "type": "integer",
+      "title": "Offensive"
+     },
+     "defensive": {
+      "type": "integer",
+      "title": "Defensive"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     }
+    },
+    "type": "object",
+    "required": [
+     "offensive",
+     "defensive",
+     "total"
+    ],
+    "title": "Rebounds"
+   },
    "Season": {
     "properties": {
      "team": {
@@ -1035,6 +1266,36 @@
      "on_off"
     ],
     "title": "Season"
+   },
+   "ShootingSplit": {
+    "properties": {
+     "made": {
+      "type": "integer",
+      "title": "Made"
+     },
+     "attempted": {
+      "type": "integer",
+      "title": "Attempted"
+     },
+     "pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pct"
+     }
+    },
+    "type": "object",
+    "required": [
+     "made",
+     "attempted",
+     "pct"
+    ],
+    "title": "ShootingSplit"
    },
    "Team": {
     "properties": {
@@ -1146,6 +1407,34 @@
      "opp_pts"
     ],
     "title": "WinProbPoint"
+   },
+   "WinShares": {
+    "properties": {
+     "offensive": {
+      "type": "number",
+      "title": "Offensive"
+     },
+     "defensive": {
+      "type": "number",
+      "title": "Defensive"
+     },
+     "total": {
+      "type": "number",
+      "title": "Total"
+     },
+     "total_per_40": {
+      "type": "number",
+      "title": "Total Per 40"
+     }
+    },
+    "type": "object",
+    "required": [
+     "offensive",
+     "defensive",
+     "total",
+     "total_per_40"
+    ],
+    "title": "WinShares"
    }
   }
  }

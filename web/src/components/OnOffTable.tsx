@@ -1,12 +1,13 @@
-import type { OnOff } from "../api/client";
+import type { OnOff, Player } from "../api/client";
 import { signed } from "../lib/format";
 import { tone } from "./LineupTable";
 
 /**
  * Each player's on/off split: the team's net rating with him on the floor minus
- * with him off. A bar shows the size and direction of the gap.
+ * with him off. A bar shows the size and direction of the gap. A player's name
+ * opens their season stats (see PlayerModal) when `onSelectPlayer` is given.
  */
-export function OnOffTable({ rows }: { rows: OnOff[] }) {
+export function OnOffTable({ rows, onSelectPlayer }: { rows: OnOff[]; onSelectPlayer?: (player: Player) => void }) {
   if (rows.length === 0) return <p className="text-sm text-slate-500">No players with enough minutes yet.</p>;
   const widest = Math.max(...rows.map((r) => Math.abs(r.on_off)), 1);
   return (
@@ -24,8 +25,19 @@ export function OnOffTable({ rows }: { rows: OnOff[] }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.player.id} className="border-b border-slate-200 dark:border-slate-800">
-              <td className="py-2 pr-3 whitespace-nowrap" title={r.player.name}>
-                {r.player.short_name}
+              <td className="py-2 pr-3 whitespace-nowrap">
+                {onSelectPlayer ? (
+                  <button
+                    type="button"
+                    title={r.player.name}
+                    onClick={() => onSelectPlayer(r.player)}
+                    className="underline decoration-dotted underline-offset-2 hover:text-ku-blue dark:hover:text-ku-sky"
+                  >
+                    {r.player.short_name}
+                  </button>
+                ) : (
+                  <span title={r.player.name}>{r.player.short_name}</span>
+                )}
               </td>
               <td className="px-2 text-right">{r.on.minutes.toFixed(0)}</td>
               <td className={`px-2 text-right ${tone(r.on.net)}`}>{signed(r.on.net)}</td>

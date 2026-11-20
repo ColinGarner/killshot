@@ -308,3 +308,27 @@ it's a by-hand re-export, which is fine for something that won't change often.
 Verified the result (no horizontal overflow, no console errors, manifest and
 service worker both recognized) with Claude in Chrome driving a real browser
 instead, once Playwright was off the table.
+
+## 33. Player season stats are CBBD's own, cached by the worker, not computed by us
+**Decided:** A player's name is clickable everywhere it shows up (lineups,
+on/off, who's on the floor live) and opens their season stats in a sheet:
+usage, efficiency ratings (ORtg/DRtg/net, PORPAG, true shooting, win shares)
+and shot-type detail, straight from CBBD's `/stats/player/season`
+(`sources/cbbd.py`'s `to_player_advanced`). The worker refreshes it once a
+schedule sync, one call per tracked team (`worker.py`'s `sync_player_stats`),
+into a new `player_season_stats` table; the API merges it into the existing
+season endpoint's `on_off` rows by player id, so opening the sheet needs no
+extra network round trip once that page's season data is loaded.
+**Why:** This is a different thing from the Ratings shown everywhere else in
+the app -- those are our own stints-based possession formula, a per-lineup
+and per-split measure. CBBD's season stats are per-player, already computed,
+and use vocabulary (usage%, PORPAG, win shares) this app doesn't otherwise
+have a reason to build. Caching it in Postgres like everything else keeps the
+API's "every route is read-only" rule (decision 22) true, instead of the API
+calling CBBD live on every click.
+**Gave up:** per-game stats. CBBD reports season totals, and the sheet shows
+them as both totals and simple per-game averages (dividing by games played,
+done in the browser, not stored); a per-game trend would need the
+per-game-advanced endpoints, which nothing here reads yet. Also gave up a
+mapping table for CBBD's athlete ids to ours -- checked live, and they're
+already the same id space as the ones stints and plays already use.

@@ -17,8 +17,9 @@ class FakeCBBD:
     """Stands in for cbbd.Client: serves the schedule and plays we give it, and
     records what was asked for."""
 
-    def __init__(self, schedule: list[dict], plays: dict[str, list] | None = None):
+    def __init__(self, schedule: list[dict], plays: dict[str, list] | None = None, player_stats: list[dict] | None = None):
         self.schedule, self.plays_by_game, self.calls = schedule, plays or {}, []
+        self.player_stats = player_stats or []
 
     def games(self, team, season):
         self.calls.append(("games", team, season))
@@ -27,6 +28,10 @@ class FakeCBBD:
     def plays(self, game_id):
         self.calls.append(("plays", game_id))
         return copy.deepcopy(self.plays_by_game.get(str(game_id), []))
+
+    def player_season_stats(self, team, season):
+        self.calls.append(("player_season_stats", team, season))
+        return copy.deepcopy(self.player_stats)
 
 
 def record(game_id: str, **changes) -> dict:
@@ -86,6 +91,22 @@ def test_refreshing_the_schedule_keeps_plays_already_saved(conn):
     assert len(db.stints_for(conn, KANSAS, 2027)) == before
     raw = conn.execute("SELECT raw FROM games WHERE id = %s", (KENTUCKY,)).fetchone()[0]
     assert raw["plays"] and raw["game"]["id"] == int(KENTUCKY)
+
+
+def test_a_schedule_sync_also_refreshes_player_season_stats(conn, capsys):
+    stat = {"teamId": 131, "athleteId": 5642, "name": "Tre White", "games": 5, "points": 97}
+    client = FakeCBBD([record(KENTUCKY)], player_stats=[stat])
+    worker.run_once(conn, client, SETTINGS, dt.date(2026, 11, 18))
+    assert ("player_season_stats", "Kansas", 2027) in client.calls
+    stats = db.player_season_stats(conn, KANSAS, 2027)
+    assert stats["5642"]["points"] == 97
+    assert "Kansas: 1 players' season stats refreshed" in capsys.readouterr().out
+
+
+def test_player_stats_sync_skips_a_team_with_no_rows(conn):
+    client = FakeCBBD([record(KENTUCKY)], player_stats=[])
+    assert worker.sync_player_stats(conn, client, SETTINGS, 2027) == []
+    assert db.player_season_stats(conn, KANSAS, 2027) == {}
 
 
 def test_games_with_an_unknown_opponent_are_skipped_until_its_known(conn):

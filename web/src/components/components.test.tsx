@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GameDetail, Killshot, Lineup, OnOff } from "../api/client";
 import { Killshots } from "./Killshots";
 import { LiveBar, OnFloor } from "./LiveBar";
@@ -27,6 +27,13 @@ describe("LineupTable", () => {
     render(<LineupTable lineups={[]} empty="No lineup played 3+ possessions." />);
     expect(screen.getByText("No lineup played 3+ possessions.")).toBeTruthy();
   });
+
+  it("opens the right player when a name in the lineup is clicked", () => {
+    const onSelectPlayer = vi.fn();
+    render(<LineupTable lineups={[lineup]} empty="none" onSelectPlayer={onSelectPlayer} />);
+    fireEvent.click(screen.getByText("White"));
+    expect(onSelectPlayer).toHaveBeenCalledWith(player("5", "Tre White", "White"));
+  });
 });
 
 describe("Killshots", () => {
@@ -52,6 +59,18 @@ describe("OnOffTable", () => {
     expect(screen.getByText("+47.2")).toBeTruthy();
     expect(screen.getByText("+29.8")).toBeTruthy();
     expect(screen.getByText("+17.4")).toBeTruthy();
+  });
+
+  it("opens the player when their name is clicked", () => {
+    const { players, stints, ...ratings } = lineup;
+    void players;
+    void stints;
+    const row: OnOff = { player: player("9", "Tre White", "White"), on: { ...ratings, minutes: 91.5, net: 47.2 },
+      off: { ...ratings, net: 29.8 }, on_off: 17.4 };
+    const onSelectPlayer = vi.fn();
+    render(<OnOffTable rows={[row]} onSelectPlayer={onSelectPlayer} />);
+    fireEvent.click(screen.getByText("White"));
+    expect(onSelectPlayer).toHaveBeenCalledWith(row.player);
   });
 });
 
@@ -92,5 +111,12 @@ describe("OnFloor", () => {
   it("lists the five by short name", () => {
     render(<OnFloor detail={liveGame("in")} />);
     expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Blyden", "Dawes", "Kinney", "Stokes", "White"]);
+  });
+
+  it("opens the right player when a pill is clicked", () => {
+    const onSelectPlayer = vi.fn();
+    render(<OnFloor detail={liveGame("in")} onSelectPlayer={onSelectPlayer} />);
+    fireEvent.click(screen.getByText("White"));
+    expect(onSelectPlayer).toHaveBeenCalledWith(player("5", "Tre White", "White"));
   });
 });

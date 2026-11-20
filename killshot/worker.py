@@ -6,6 +6,9 @@
 Each pass of the loop:
 1. Refreshes each tracked team's schedule from CBBD (every 10 minutes around a
    game, every 6 hours otherwise), so new games, tip times and finals show up.
+   Alongside it, refreshes each tracked team's player season stats (usage,
+   efficiency ratings, shot-type detail -- see sources/cbbd.py's
+   to_player_advanced), one CBBD call per team.
 2. Fetches plays for any finished game we don't have plays for yet, and saves
    the game. CBBD publishes plays some time after the final, so an empty answer
    is retried after 5, 10, 20, 40, then every 60 minutes.
@@ -98,6 +101,20 @@ def sync_schedules(conn, client: cbbd.Client, settings: Settings, season: int) -
     return stored
 
 
+def sync_player_stats(conn, client: cbbd.Client, settings: Settings, season: int) -> list[str]:
+    """Refresh every tracked team's player season stats from CBBD (one call per team).
+    Returns a log line per team."""
+    notes = []
+    for team in settings.teams:
+        raw = client.player_season_stats(team, season)
+        if not raw:
+            continue
+        rows = [cbbd.to_player_advanced(p) for p in raw]
+        db.save_player_season_stats(conn, rows[0]["team_id"], season, rows)
+        notes.append(f"{team}: {len(rows)} players' season stats refreshed")
+    return notes
+
+
 def fetch_finished_games(conn, client: cbbd.Client) -> list[str]:
     """Fetch and save plays for finished games that don't have them yet.
     Returns a log line for each game handled."""
@@ -186,6 +203,8 @@ def run_once(conn, client: cbbd.Client, settings: Settings, today: dt.date, fetc
     if synced:
         stored = sync_schedules(conn, client, settings, current_season(today))
         log(f"schedule synced for {', '.join(settings.teams)}: {stored} games")
+        for note in sync_player_stats(conn, client, settings, current_season(today)):
+            log(note)
 
     notes = fetch_finished_games(conn, client)
     for note in notes:

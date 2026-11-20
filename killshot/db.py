@@ -387,3 +387,23 @@ def push_subscriptions(conn: psycopg.Connection) -> list[dict]:
     """Every saved subscription, as {endpoint, p256dh, auth}, ready for push.send()."""
     cur = conn.execute("SELECT endpoint, p256dh, auth FROM push_subscriptions")
     return [{"endpoint": e, "p256dh": p, "auth": a} for e, p, a in cur.fetchall()]
+
+
+# --- player season stats ----------------------------------------------------------
+
+def save_player_season_stats(conn: psycopg.Connection, team_id: str, season: int, rows: list[dict]) -> None:
+    """Replace one team-season's player stats (each row shaped like cbbd.to_player_advanced)."""
+    with conn.transaction():
+        conn.execute("DELETE FROM player_season_stats WHERE team_id = %s AND season = %s", (team_id, season))
+        for r in rows:
+            conn.execute(
+                """INSERT INTO player_season_stats (team_id, season, athlete_id, payload)
+                   VALUES (%s, %s, %s, %s)""",
+                (team_id, season, r["athlete_id"], json.dumps(r)))
+
+
+def player_season_stats(conn: psycopg.Connection, team_id: str, season: int) -> dict[str, dict]:
+    """Athlete id -> their CBBD season stats, for one team and season."""
+    return dict(conn.execute(
+        "SELECT athlete_id, payload FROM player_season_stats WHERE team_id = %s AND season = %s",
+        (team_id, season)).fetchall())
