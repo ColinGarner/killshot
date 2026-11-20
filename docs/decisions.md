@@ -288,4 +288,23 @@ enters the `killshots` list once the run is over (the other team scores again,
 or the game ends -- see `events.killshots`), so the push arrives then, not the
 instant the run passes 10 points; a "building a run" alert would need separate
 logic. iOS Safari only allows push after the site is added to the home screen
-(7.6, not done yet), so this doesn't reach iOS fans until then.
+(decision 32), so this didn't reach iOS fans until that shipped.
+
+## 32. App icons are static PNGs, drawn once with Pillow, not Playwright
+**Decided:** Add to Home Screen needs a manifest and icon PNGs at a few sizes
+(`web/public/manifest.json`, `web/public/icons/`). The icons were drawn with a
+throwaway Python/Pillow script (a blue-white-blue flag, like KU's varsity
+jerseys, with a crimson "K" outlined in blue), rendered once and checked in
+as plain files -- nothing in the build regenerates them. `apple-mobile-web-app-*` meta tags in `index.html`
+cover iOS, which doesn't act on the manifest the way Android does.
+**Why:** The obvious tool for turning an HTML/CSS design into a PNG is a
+headless browser, but Playwright's browser download couldn't reach its CDN
+from this sandbox (`pip install` and `npm install` could still reach their
+registries fine, so it's that one host, not the network generally). Pillow
+draws the same shapes directly, needs nothing beyond itself, and for four flat
+PNGs is less code than wiring up a browser just to screenshot a `<div>`.
+**Gave up:** regenerating icons as a build step if the design changes later;
+it's a by-hand re-export, which is fine for something that won't change often.
+Verified the result (no horizontal overflow, no console errors, manifest and
+service worker both recognized) with Claude in Chrome driving a real browser
+instead, once Playwright was off the table.
