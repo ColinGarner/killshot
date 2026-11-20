@@ -332,3 +332,24 @@ done in the browser, not stored); a per-game trend would need the
 per-game-advanced endpoints, which nothing here reads yet. Also gave up a
 mapping table for CBBD's athlete ids to ours -- checked live, and they're
 already the same id space as the ones stints and plays already use.
+
+## 34. A periodic sync checks its own staleness, not a shared gate
+**Decided:** `sync_player_stats` now checks its own freshness
+(`db.player_stats_is_stale`, missing or more than a few hours old) and is
+called every worker pass, not nested inside the schedule sync's `if synced:`
+block the way it shipped in decision 33.
+**Why:** Found this live, right before a game: decision 33 deployed, but 17
+minutes later the season page still showed no player stats at all. The
+schedule-sync timestamp it was gated behind was last set hours earlier, under
+the old code, and wasn't due again for a while -- so the brand-new sync had
+never run, not even once, and had no way to know it should. Giving it its
+own staleness check (the same shape `stale_team_overviews` already uses,
+just at the team-season grain instead of per-opponent) means a freshly
+deployed sync runs on its first real chance, not whenever an unrelated clock
+says so.
+**Gave up:** throttling a team whose CBBD answer comes back genuinely empty
+(no roster stats yet). Nothing is saved in that case, so there's no `updated_at`
+row to mark it checked, and the next pass tries again -- fine while the season
+is active (CBBD always has something for a team playing games), a real but
+accepted gap in an off-season with no games yet. Worth revisiting if this ever
+tracks a team through an actual empty stretch.

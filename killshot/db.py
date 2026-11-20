@@ -407,3 +407,13 @@ def player_season_stats(conn: psycopg.Connection, team_id: str, season: int) -> 
     return dict(conn.execute(
         "SELECT athlete_id, payload FROM player_season_stats WHERE team_id = %s AND season = %s",
         (team_id, season)).fetchall())
+
+
+def player_stats_is_stale(conn: psycopg.Connection, team_id: str, season: int, max_age_hours: float) -> bool:
+    """Whether this team-season's player stats are missing entirely, or every row is
+    older than `max_age_hours` -- worth spending a CBBD call to refresh either way."""
+    row = conn.execute(
+        """SELECT 1 FROM player_season_stats WHERE team_id = %s AND season = %s
+           AND updated_at >= now() - make_interval(hours => %s) LIMIT 1""",
+        (team_id, season, max_age_hours)).fetchone()
+    return row is None

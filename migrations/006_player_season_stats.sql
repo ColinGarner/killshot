@@ -2,10 +2,10 @@
 --
 -- CollegeBasketballData's own season stats per player (usage, efficiency
 -- ratings, shot-type detail) -- distinct from the stints-derived Ratings
--- built elsewhere from our own possession formula. The worker refreshes this
--- alongside the schedule sync (see worker.py's sync_player_stats); payload
--- is already translated into our field names (sources/cbbd.py's
--- to_player_advanced), so nothing else needs to know CBBD's.
+-- built elsewhere from our own possession formula. The worker refreshes a
+-- team-season's rows once they're missing or a few hours old (see worker.py's
+-- sync_player_stats); payload is already translated into our field names
+-- (sources/cbbd.py's to_player_advanced), so nothing else needs to know CBBD's.
 --
 -- No foreign key on athlete_id: a player can show up here (full roster, from
 -- CBBD) before they show up in `players` (only populated from saved plays),
