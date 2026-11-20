@@ -46,7 +46,7 @@ export function PushAlerts() {
       disabled={status === "checking" || status === "busy"}
       aria-pressed={status === "on"}
       title={status === "denied" ? "Notifications are blocked in this browser" : "Get a notification for every killshot"}
-      className={`shrink-0 rounded-full border px-3 py-1.5 font-display text-[11px] font-bold tracking-widest uppercase ${
+      className={`flex min-h-11 shrink-0 items-center rounded-full border px-3 font-display text-[11px] font-bold tracking-widest uppercase ${
         status === "on" ? "border-white bg-white/15 text-white" : "border-white/40 text-white/80"
       }`}
     >

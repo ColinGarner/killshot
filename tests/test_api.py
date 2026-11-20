@@ -18,6 +18,7 @@ def api(conn, games, monkeypatch):
     db.heartbeat(conn, "ok; test")
     monkeypatch.setenv("DATABASE_URL", conn.info.dsn + " password=" + (conn.info.password or ""))
     monkeypatch.setenv("TRACKED_TEAMS", "Kansas")
+    monkeypatch.delenv("VAPID_PUBLIC_KEY", raising=False)  # don't inherit a developer's real .env
     return TestClient(app)
 
 

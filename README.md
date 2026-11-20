@@ -78,7 +78,17 @@ pushes for whatever killshots it plays through, so it's also how to test this:
 subscribe in a browser, then start a replay and watch for the notification.
 Push needs a browser that supports it in an ordinary tab (desktop Chrome,
 Firefox, Edge; Android Chrome) -- iOS Safari needs the site added to the home
-screen first, which isn't set up yet (7.6).
+screen first (see below).
+
+### Add to Home Screen
+
+`web/public/manifest.json` and `web/public/icons/` make the site installable:
+Android Chrome offers to add it to the home screen on its own; on iOS, Share
+→ Add to Home Screen. Installed, it opens full-screen with its own icon, no
+browser chrome. The icons are plain static PNGs (a blue-white-blue flag, like
+KU's varsity jerseys, with a crimson "K" outlined in blue) checked in, not
+generated at build time -- redraw and re-export them by hand if the design
+ever changes.
 
 ### Developing
 
@@ -137,7 +147,7 @@ the machine itself.
    - 7.3 Worker polls live games ✓
    - 7.4 API serves the live game ✓
    - 7.5 Live game page ✓
-   - 7.6 Phone layout and Add to Home Screen (after the deploy)
+   - 7.6 Phone layout and Add to Home Screen ← this PR
 5. **Railway deploy** ✓
-9. Push notifications for killshots ← this PR
+9. Push notifications for killshots ✓
 8. Garbage-time toggle, foul trouble, scouting
