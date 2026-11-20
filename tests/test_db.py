@@ -53,3 +53,16 @@ def test_api_calls_are_counted_per_month(conn):
     for _ in range(3):
         db.count_api_call(conn)
     assert db.api_calls_this_month(conn) == 3
+
+
+def test_push_subscriptions_round_trip_and_can_be_removed(conn):
+    db.save_subscription(conn, "https://push.example/a", "p256dh-a", "auth-a")
+    db.save_subscription(conn, "https://push.example/b", "p256dh-b", "auth-b")
+    assert len(db.push_subscriptions(conn)) == 2
+
+    db.save_subscription(conn, "https://push.example/a", "p256dh-a2", "auth-a2")  # same endpoint: keys refresh
+    subs = {s["endpoint"]: s for s in db.push_subscriptions(conn)}
+    assert len(subs) == 2 and subs["https://push.example/a"]["p256dh"] == "p256dh-a2"
+
+    db.delete_subscription(conn, "https://push.example/a")
+    assert [s["endpoint"] for s in db.push_subscriptions(conn)] == ["https://push.example/b"]

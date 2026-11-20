@@ -15,6 +15,7 @@ export type Killshot = Schemas["Killshot"];
 export type Ratings = Schemas["Ratings"];
 export type OnOff = Schemas["OnOff"];
 export type Season = Schemas["Season"];
+export type PushSubscriptionBody = Schemas["PushSubscription"];
 
 /** Turn openapi-fetch's {data, error} answer into data, or a thrown error TanStack Query can show. */
 export async function unwrap<T>(request: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {

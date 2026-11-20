@@ -8,6 +8,7 @@ dependencies = [
     "psycopg[binary]>=3.1",      # Postgres driver (killshot/db.py)
     "fastapi>=0.110",            # web API (killshot/api.py)
     "uvicorn[standard]>=0.27",   # the web server that runs the API
+    "pywebpush>=2.0",            # push notifications (killshot/push.py): VAPID signing + payload encryption
 ]
 
 [project.scripts]

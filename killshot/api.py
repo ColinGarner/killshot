@@ -11,7 +11,8 @@ It also serves the built frontend (web/dist): any path that isn't an API route
 gets the React app, which then shows the right page for that URL.
 
 Settings (environment variables): DATABASE_URL, TRACKED_TEAMS (default: Kansas),
-WEB_DIST (default: web/dist in this repo).
+WEB_DIST (default: web/dist in this repo), VAPID_PUBLIC_KEY (push notifications;
+see push.py -- subscribing does nothing if it isn't set).
 """
 import os
 from collections.abc import Iterator
@@ -115,6 +116,27 @@ def season(team_id: str, season: int, min_minutes: float = 20, exclude_garbage: 
         "lineups": sorted(lineup_rows(lineups, people), key=lambda r: -r["net"]),
         "on_off": sorted(on_off, key=lambda r: -r["on_off"]),
     }
+
+
+# --- push notifications ---------------------------------------------------------
+
+@app.get("/api/push/vapid-key")
+def vapid_key() -> schemas.VapidKey:
+    """The site's public VAPID key, so the browser can subscribe. None if push isn't set up."""
+    return {"public_key": os.environ.get("VAPID_PUBLIC_KEY")}
+
+
+@app.post("/api/push/subscribe")
+def push_subscribe(sub: schemas.PushSubscription, conn: psycopg.Connection = Depends(get_conn)) -> schemas.Ok:
+    """Save a browser's push subscription. The worker pushes to it when a new killshot shows up."""
+    db.save_subscription(conn, sub.endpoint, sub.keys.p256dh, sub.keys.auth)
+    return {"ok": True}
+
+
+@app.post("/api/push/unsubscribe")
+def push_unsubscribe(sub: schemas.PushUnsubscribe, conn: psycopg.Connection = Depends(get_conn)) -> schemas.Ok:
+    db.delete_subscription(conn, sub.endpoint)
+    return {"ok": True}
 
 
 # --- the frontend --------------------------------------------------------------

@@ -34,7 +34,7 @@ import signal
 import time
 from dataclasses import dataclass
 
-from . import db, live
+from . import db, live, push
 from .sources import cbbd, espn
 
 GAME_DAY_SYNC = 10 * 60        # seconds between schedule syncs around a game
@@ -160,7 +160,10 @@ def poll_live_games(conn, settings: Settings, fetch=espn.summary) -> tuple[bool,
             continue  # not tipped yet: nothing to show
         for team_id in team_ids:
             (row,) = db.games_for_team(conn, team_id, game_id=game_id)
+            prev = db.live_page(conn, game_id, team_id)
             page = live.build(row, team_id, espn_game)
+            team_name = row["home_name"] if row["home_team_id"] == team_id else row["away_name"]
+            notes += push.notify_new_killshots(conn, prev[0] if prev else None, page, team_name)
             db.save_live(conn, game_id, team_id, page)
         g = page["game"]
         notes.append(f"live: {page['live']['clock'] or espn_game.status} {g['pts']}-{g['opp_pts']} "

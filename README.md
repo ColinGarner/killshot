@@ -20,6 +20,8 @@ Built for any team; ships with Kansas.
 | `killshot/detail.py` | Puts a game page together (lineups, win probability, killshots), for finished and live games alike |
 | `killshot/live.py` | Builds the live game page from ESPN while a game is on |
 | `killshot/replay.py` | `killshot replay`: plays a finished game back through the live view, for testing |
+| `killshot/push.py` | Sends a push notification when a new killshot shows up in a live game |
+| `killshot/vapid.py` | `killshot vapid`: generates the key pair push notifications sign with |
 | `migrations/*.sql` | The Postgres schema, one numbered file per change |
 | `killshot/db.py` | All SQL: save a game, read a season's stints |
 | `killshot/load.py` | Loads a team's finished games from CBBD into Postgres |
@@ -62,8 +64,21 @@ The worker keeps new games coming in while it runs.
 | `killshot worker` | Run only the worker |
 | `killshot reprocess` | Rebuild stored games from their saved raw data (no API calls) |
 | `killshot replay 372750` | Play a finished game back as if live, about 80 seconds (`--speed 10` for slower) |
+| `killshot vapid` | Generate a `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` pair for push notifications |
 
 Every command reads `.env`; a variable set in your shell wins over the file.
+
+### Push notifications
+
+A bell in the header lets a fan turn on a push notification for every new
+killshot. It needs `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT`
+in `.env` (run `killshot vapid` once and paste its output in); without them the
+bell still shows, but subscribing does nothing. `killshot replay` sends real
+pushes for whatever killshots it plays through, so it's also how to test this:
+subscribe in a browser, then start a replay and watch for the notification.
+Push needs a browser that supports it in an ordinary tab (desktop Chrome,
+Firefox, Edge; Android Chrome) -- iOS Safari needs the site added to the home
+screen first, which isn't set up yet (7.6).
 
 ### Developing
 
@@ -90,6 +105,7 @@ One Railway service runs everything: the API, the site and the worker, from the
    | `CBBD_API_KEY` | your CollegeBasketballData.com key |
    | `CBBD_MONTHLY_LIMIT` | `25000` (Tier 2 is 30,000; this leaves room for running it locally too) |
    | `TRACKED_TEAMS` | `Kansas` |
+   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional: push notifications for killshots. Generate with `killshot vapid` |
 
 4. Under **Settings → Networking**, click **Generate Domain** for a public `*.up.railway.app` address.
 
@@ -122,5 +138,6 @@ the machine itself.
    - 7.4 API serves the live game ✓
    - 7.5 Live game page ✓
    - 7.6 Phone layout and Add to Home Screen (after the deploy)
-5. **Railway deploy** ← this PR
+5. **Railway deploy** ✓
+9. Push notifications for killshots ← this PR
 8. Garbage-time toggle, foul trouble, scouting
