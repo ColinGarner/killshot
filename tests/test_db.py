@@ -80,3 +80,14 @@ def test_player_season_stats_round_trip_and_replace(conn):
     db.save_player_season_stats(conn, KANSAS, 2027, [{"team_id": KANSAS, "athlete_id": "5642", "games": 6, "points": 110}])
     stats = db.player_season_stats(conn, KANSAS, 2027)
     assert set(stats) == {"5642"} and stats["5642"]["points"] == 110
+
+
+def test_player_stats_is_stale_when_missing_or_a_few_hours_old(conn):
+    conn.execute("INSERT INTO teams (id, name) VALUES (%s, %s)", (KANSAS, "Kansas"))
+    assert db.player_stats_is_stale(conn, KANSAS, 2027, max_age_hours=6)  # never synced
+
+    db.save_player_season_stats(conn, KANSAS, 2027, [{"team_id": KANSAS, "athlete_id": "5642", "games": 5}])
+    assert not db.player_stats_is_stale(conn, KANSAS, 2027, max_age_hours=6)  # fresh
+
+    conn.execute("UPDATE player_season_stats SET updated_at = now() - interval '7 hours'")
+    assert db.player_stats_is_stale(conn, KANSAS, 2027, max_age_hours=6)

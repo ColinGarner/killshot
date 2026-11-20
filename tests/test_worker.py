@@ -93,7 +93,7 @@ def test_refreshing_the_schedule_keeps_plays_already_saved(conn):
     assert raw["plays"] and raw["game"]["id"] == int(KENTUCKY)
 
 
-def test_a_schedule_sync_also_refreshes_player_season_stats(conn, capsys):
+def test_player_stats_refresh_when_missing(conn, capsys):
     stat = {"teamId": 131, "athleteId": 5642, "name": "Tre White", "games": 5, "points": 97}
     client = FakeCBBD([record(KENTUCKY)], player_stats=[stat])
     worker.run_once(conn, client, SETTINGS, dt.date(2026, 11, 18))
@@ -103,8 +103,33 @@ def test_a_schedule_sync_also_refreshes_player_season_stats(conn, capsys):
     assert "Kansas: 1 players' season stats refreshed" in capsys.readouterr().out
 
 
+def test_player_stats_sync_runs_even_when_the_schedule_sync_is_not_due(conn):
+    # The bug this guards against: player stats sync used to be gated behind the
+    # schedule-sync timestamp, so a freshly deployed sync could wait hours for an
+    # unrelated clock before it ran even once. Confirms the schedule sync itself
+    # does NOT re-run (not due yet) while player stats still refreshes regardless.
+    client = FakeCBBD([record(KENTUCKY)],
+                      player_stats=[{"teamId": 131, "athleteId": 5642, "name": "Tre White", "games": 5, "points": 97}])
+    worker.sync_schedules(conn, client, SETTINGS, 2027)  # establishes the Kansas team row
+    db.heartbeat(conn, "ok", synced_schedule=True)  # pretend a schedule sync just happened
+    client.calls.clear()
+    worker.run_once(conn, client, SETTINGS, dt.date(2026, 11, 18))
+    assert ("games", "Kansas", 2027) not in client.calls  # schedule sync correctly skipped: not due
+    assert ("player_season_stats", "Kansas", 2027) in client.calls  # but this still ran
+
+
+def test_a_fresh_player_stats_sync_is_not_refetched(conn):
+    client = FakeCBBD([record(KENTUCKY)])
+    worker.sync_schedules(conn, client, SETTINGS, 2027)
+    db.save_player_season_stats(conn, KANSAS, 2027, [{"team_id": KANSAS, "athlete_id": "5642", "games": 5, "points": 97}])
+    client.calls.clear()
+    assert worker.sync_player_stats(conn, client, SETTINGS, 2027) == []
+    assert ("player_season_stats", "Kansas", 2027) not in client.calls
+
+
 def test_player_stats_sync_skips_a_team_with_no_rows(conn):
     client = FakeCBBD([record(KENTUCKY)], player_stats=[])
+    worker.sync_schedules(conn, client, SETTINGS, 2027)  # establishes the Kansas team row
     assert worker.sync_player_stats(conn, client, SETTINGS, 2027) == []
     assert db.player_season_stats(conn, KANSAS, 2027) == {}
 
@@ -131,8 +156,8 @@ def test_schedule_syncs_every_10_minutes_around_a_game_and_every_6_hours_otherwi
     worker.run_once(conn, FakeCBBD([far]), SETTINGS, dt.date(2026, 11, 18))
     client = FakeCBBD([far])
     wait = worker.run_once(conn, client, SETTINGS, dt.date(2026, 11, 18))
-    assert client.calls == []  # 6 hours haven't passed
-    assert wait == worker.MAX_SLEEP  # wakes for a heartbeat, but makes no calls
+    assert ("games", "Kansas", 2027) not in client.calls  # 6 hours haven't passed
+    assert wait == worker.MAX_SLEEP  # wakes for a heartbeat, but makes no schedule calls
 
 
 def test_no_calls_at_all_once_the_monthly_allowance_is_used(conn):

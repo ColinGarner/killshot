@@ -6,16 +6,18 @@
 Each pass of the loop:
 1. Refreshes each tracked team's schedule from CBBD (every 10 minutes around a
    game, every 6 hours otherwise), so new games, tip times and finals show up.
-   Alongside it, refreshes each tracked team's player season stats (usage,
-   efficiency ratings, shot-type detail -- see sources/cbbd.py's
-   to_player_advanced), one CBBD call per team.
-2. Fetches plays for any finished game we don't have plays for yet, and saves
+2. Refreshes each tracked team's player season stats (usage, efficiency
+   ratings, shot-type detail -- see sources/cbbd.py's to_player_advanced) if
+   they're missing or more than a few hours old. Checked every pass, not
+   gated behind the schedule sync above, so this runs on its first chance
+   rather than however long it's been since an unrelated schedule sync.
+3. Fetches plays for any finished game we don't have plays for yet, and saves
    the game. CBBD publishes plays some time after the final, so an empty answer
    is retried after 5, 10, 20, 40, then every 60 minutes.
-3. While a tracked team is playing, reads ESPN's game summary every 30 seconds
+4. While a tracked team is playing, reads ESPN's game summary every 30 seconds
    and saves the live game page (see live.py). CBBD has no live plays, so this
    is the only ESPN use, and it costs no CBBD calls.
-4. Records a heartbeat, so a health check can tell the worker is alive.
+5. Records a heartbeat, so a health check can tell the worker is alive.
 
 When CBBD's plays for a game arrive after the final, the worker checks them
 against ESPN's final (same score for each team, matched by name) and deletes
@@ -101,17 +103,24 @@ def sync_schedules(conn, client: cbbd.Client, settings: Settings, season: int) -
     return stored
 
 
+PLAYER_STATS_MAX_AGE_HOURS = 6  # usage/efficiency numbers don't move fast enough to refresh more often
+
+
 def sync_player_stats(conn, client: cbbd.Client, settings: Settings, season: int) -> list[str]:
-    """Refresh every tracked team's player season stats from CBBD (one call per team).
-    Returns a log line per team."""
+    """Refresh a tracked team's player season stats from CBBD if they're missing or more
+    than a few hours old (one call per stale team). Not gated behind the schedule sync --
+    called every pass, so a freshly deployed sync doesn't have to wait out an old,
+    unrelated schedule-sync timestamp before it runs even once."""
     notes = []
-    for team in settings.teams:
-        raw = client.player_season_stats(team, season)
+    for team_id, name in db.team_ids(conn, settings.teams).items():
+        if not db.player_stats_is_stale(conn, team_id, season, PLAYER_STATS_MAX_AGE_HOURS):
+            continue
+        raw = client.player_season_stats(name, season)
         if not raw:
             continue
         rows = [cbbd.to_player_advanced(p) for p in raw]
-        db.save_player_season_stats(conn, rows[0]["team_id"], season, rows)
-        notes.append(f"{team}: {len(rows)} players' season stats refreshed")
+        db.save_player_season_stats(conn, team_id, season, rows)
+        notes.append(f"{name}: {len(rows)} players' season stats refreshed")
     return notes
 
 
@@ -203,8 +212,9 @@ def run_once(conn, client: cbbd.Client, settings: Settings, today: dt.date, fetc
     if synced:
         stored = sync_schedules(conn, client, settings, current_season(today))
         log(f"schedule synced for {', '.join(settings.teams)}: {stored} games")
-        for note in sync_player_stats(conn, client, settings, current_season(today)):
-            log(note)
+
+    for note in sync_player_stats(conn, client, settings, current_season(today)):
+        log(note)
 
     notes = fetch_finished_games(conn, client)
     for note in notes:
