@@ -55,6 +55,15 @@ def test_send_does_nothing_without_a_vapid_key(monkeypatch):
     assert push.send(None, "title", "body") == []
 
 
+def test_a_successful_send_is_logged_too_not_just_failures(monkeypatch):
+    # Otherwise "no notification showed up" and "nothing was sent" look identical in the log.
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "not-used-webpush-is-stubbed")
+    monkeypatch.setattr(push.db, "push_subscriptions", lambda conn: [
+        {"endpoint": "e1", "p256dh": "p", "auth": "a"}, {"endpoint": "e2", "p256dh": "p", "auth": "a"}])
+    monkeypatch.setattr(push, "webpush", lambda **kwargs: None)
+    assert push.send(None, "title", "body") == ["push: sent to 2 subscribers"]
+
+
 def test_a_network_failure_sending_to_one_subscription_is_logged_not_raised(monkeypatch):
     # A DNS or connection error raises a plain exception, not WebPushException --
     # it must be caught too, or one bad subscription would crash the worker.

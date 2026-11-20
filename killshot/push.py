@@ -68,20 +68,23 @@ def send(conn: psycopg.Connection, title: str, body: str, url: str = "/") -> lis
 
     A subscription the browser has revoked (its push service answers 404 or
     410) is deleted; any other failure is only logged, so one bad subscription
-    never stops the rest from being notified. Returns a log line per failure.
+    never stops the rest from being notified. Returns one log line summarizing
+    how many sent, plus a line per failure -- a successful send isn't silent,
+    so "no notification showed up" can be told apart from "nothing was sent".
     """
     private_key = os.environ.get("VAPID_PRIVATE_KEY")
     if not private_key:
         return []
     payload = json.dumps({"title": title, "body": body, "url": url})
     claims = {"sub": os.environ.get("VAPID_SUBJECT", "mailto:nobody@example.com")}
-    notes = []
+    sent, notes = 0, []
     for sub in db.push_subscriptions(conn):
         try:
             webpush(
                 subscription_info={"endpoint": sub["endpoint"],
                                    "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]}},
                 data=payload, vapid_private_key=private_key, vapid_claims=dict(claims))
+            sent += 1
         except WebPushException as e:
             status = e.response.status_code if e.response is not None else None
             if status in (404, 410):
@@ -91,4 +94,6 @@ def send(conn: psycopg.Connection, title: str, body: str, url: str = "/") -> lis
                 notes.append(f"push: failed ({e})")
         except Exception as e:  # a network hiccup must not stop the others, or whoever called this
             notes.append(f"push: failed ({e!r})")
+    if sent:
+        notes.append(f"push: sent to {sent} subscriber{'' if sent == 1 else 's'}")
     return notes
