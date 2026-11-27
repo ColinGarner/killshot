@@ -92,11 +92,16 @@ def game(team_id: str, game_id: str, conn: psycopg.Connection = Depends(get_conn
         return {**page, "live": {**page["live"], "updated_at": updated_at.isoformat()}}
     row = rows[0]
     home = row["home_team_id"] == team_id
+    people = db.players(conn)
+    lines = db.box_for_game(conn, game_id)
+    sides = [(row["home_team_id"], row["home_name"]), (row["away_team_id"], row["away_name"])]
+    sides.sort(key=lambda side: side[0] != team_id)  # this team first
+    box = [detail.team_box({"id": i, "name": n}, lines[i], people) for i, n in sides if i in lines]
     return detail.build(game_summary(row, team_id), team_id, home,
                         stints=db.stints_for(conn, team_id, game_id=game_id),
                         win_prob=[WinProbPoint(*r) for r in db.win_prob_for_game(conn, game_id)],
                         runs=[Run(*r) for r in db.runs_for_game(conn, game_id)],
-                        people=db.players(conn))
+                        people=people, box=box)
 
 
 @app.get("/api/teams/{team_id}/seasons/{season}")

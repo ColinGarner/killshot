@@ -45,7 +45,9 @@ def build(row: dict, team_id: str, espn_game: Game, now: dt.datetime | None = No
     people = {pid: {"id": pid, "name": p.name, "short_name": p.short_name} for pid, p in espn_game.players.items()}
     stints = espn_game.stints.get(us.id, [])
     # ESPN's timelines are from ESPN's home side, so flip by ESPN's idea of home.
-    page = detail.build(summary, us.id, us.is_home, stints, espn_game.win_prob, espn_game.runs, people)
+    box = [detail.team_box({"id": team_id, "name": our_name}, espn_game.box.get(us.id, []), people),
+           detail.team_box(summary["opponent"], espn_game.box.get(them.id, []), people)]
+    page = detail.build(summary, us.id, us.is_home, stints, espn_game.win_prob, espn_game.runs, people, box)
 
     last = stints[-1] if stints else None
     page["live"] = {

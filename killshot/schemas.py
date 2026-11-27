@@ -91,6 +91,50 @@ class Live(BaseModel):
     on_floor: list[Player] # this team's five right now
 
 
+class BoxLine(BaseModel):
+    """One player's game. Shooting is made and attempted; rebounds are offensive and defensive."""
+    player: Player
+    minutes: float
+    pts: int
+    fgm: int
+    fga: int
+    tpm: int
+    tpa: int
+    ftm: int
+    fta: int
+    oreb: int
+    dreb: int
+    ast: int
+    stl: int
+    blk: int
+    tov: int
+    pf: int
+    plus_minus: int          # team's points minus opponent's while he was on the floor
+
+
+class BoxTotals(BaseModel):
+    pts: int
+    fgm: int
+    fga: int
+    tpm: int
+    tpa: int
+    ftm: int
+    fta: int
+    oreb: int
+    dreb: int
+    ast: int
+    stl: int
+    blk: int
+    tov: int
+    pf: int
+
+
+class TeamBox(BaseModel):
+    team: Team
+    players: list[BoxLine]   # most minutes first
+    totals: BoxTotals        # players added up; team rebounds aren't credited to anyone
+
+
 class GameDetail(BaseModel):
     game: GameSummary
     min_poss: int          # possessions a lineup needs to be listed
@@ -98,6 +142,7 @@ class GameDetail(BaseModel):
     win_prob: list[WinProbPoint]
     killshots: list[Killshot]
     live: Live | None = None  # set while the page is built from ESPN's live feed
+    box: list[TeamBox] = []   # this team first, then the opponent; empty if not available
 
 
 class ShootingSplit(BaseModel):

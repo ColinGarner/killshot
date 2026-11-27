@@ -17,6 +17,8 @@ DEF_REBOUND = "dreb"
 TURNOVER = "turnover"
 SUB = "sub"
 FOUL = "foul"
+STEAL = "steal"            # only for the box score: the turnover it caused is its own play
+BLOCK = "block"            # likewise: the missed shot is its own play
 OTHER = "other"
 
 
@@ -29,7 +31,8 @@ class Play:
     made: bool = False       # for shots and free throws
     three: bool = False      # for shots
     points: int = 0
-    player_id: str | None = None
+    player_id: str | None = None  # who made the play: the shooter, rebounder, fouler, ...
+    assist_id: str | None = None  # for made shots: who assisted, if anyone
     sub: str | None = None   # for substitutions: "in" or "out" (player_id is the player)
     home_pts: int = 0        # score after this play
     away_pts: int = 0

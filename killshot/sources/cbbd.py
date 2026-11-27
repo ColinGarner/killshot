@@ -90,7 +90,25 @@ def play_kind(p: dict) -> str:
         return P.SUB
     if "Foul" in kind:
         return P.FOUL
+    if kind == "Steal":
+        return P.STEAL
+    if kind == "Block Shot":
+        return P.BLOCK
     return P.OTHER
+
+
+def actor_and_assist(p: dict) -> tuple[str | None, str | None]:
+    """(who made the play, who assisted). CBBD doesn't always list the shooter first on
+    an assisted basket ("Trey Kaufman-Renn makes ... (Taylen Kinney assists)" can list
+    Kinney first), so the actor is the participant whose name starts the play text."""
+    people = p.get("participants") or []
+    if not people:
+        return None, None
+    text = p.get("playText") or ""
+    actor = next((x for x in people if text.startswith(x.get("name") or "\0")), people[0])
+    others = [x for x in people if x is not actor]
+    assist = others[0] if others and "assist" in text.lower() else None
+    return str(actor["id"]), (str(assist["id"]) if assist else None)
 
 
 def to_play(p: dict, team_ids: dict[str, str]) -> P.Play:
@@ -99,7 +117,7 @@ def to_play(p: dict, team_ids: dict[str, str]) -> P.Play:
     on_floor: dict[str, list[str]] = {}
     for player in p.get("onFloor") or []:
         on_floor.setdefault(team_ids[player["team"]], []).append(str(player["id"]))
-    participants = p.get("participants") or []
+    actor, assist = actor_and_assist(p)
     wp = p.get("homeWinProbability")
     text = (p.get("playText") or "").lower()
     kind = play_kind(p)
@@ -116,7 +134,8 @@ def to_play(p: dict, team_ids: dict[str, str]) -> P.Play:
         made=bool(p.get("scoringPlay")),
         three=shot.get("range") == "three_pointer",
         points=int(p.get("scoreValue") or 0),
-        player_id=str(participants[0]["id"]) if participants else None,
+        player_id=actor,
+        assist_id=assist,
         sub=sub,
         home_pts=p["homeScore"],
         away_pts=p["awayScore"],

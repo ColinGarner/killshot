@@ -353,3 +353,17 @@ row to mark it checked, and the next pass tries again -- fine while the season
 is active (CBBD always has something for a team playing games), a real but
 accepted gap in an off-season with no games yet. Worth revisiting if this ever
 tracks a team through an actual empty stretch.
+
+## 35. Box scores are built from the plays, not fetched
+**Decided:** Each player's box score (minutes, points, shooting, rebounds, assists,
+steals, blocks, turnovers, fouls, +/-) is computed from the play-by-play by
+`boxscore.py`, the same way for ESPN's live plays and CBBD's official ones, and
+saved with the game in `player_games`. Games stored earlier are filled in from
+their saved raw plays when `killshot start` or `serve` runs.
+**Why:** No extra API calls, and the live and official box scores come from the
+same code, so they agree. Checked against ESPN's official box score for three
+games: every player matches, except one assist ESPN corrected in its box score but
+not its play-by-play. Minutes and +/- come from the lineups we already rebuild.
+**Gave up:** Official stat corrections that never reach the play-by-play (rare;
+one assist so far). CBBD doesn't always list the shooter first on an assisted
+basket, so the translator reads the shooter's name from the play text.

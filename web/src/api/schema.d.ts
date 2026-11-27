@@ -166,6 +166,76 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BoxLine
+         * @description One player's game. Shooting is made and attempted; rebounds are offensive and defensive.
+         */
+        BoxLine: {
+            player: components["schemas"]["Player"];
+            /** Minutes */
+            minutes: number;
+            /** Pts */
+            pts: number;
+            /** Fgm */
+            fgm: number;
+            /** Fga */
+            fga: number;
+            /** Tpm */
+            tpm: number;
+            /** Tpa */
+            tpa: number;
+            /** Ftm */
+            ftm: number;
+            /** Fta */
+            fta: number;
+            /** Oreb */
+            oreb: number;
+            /** Dreb */
+            dreb: number;
+            /** Ast */
+            ast: number;
+            /** Stl */
+            stl: number;
+            /** Blk */
+            blk: number;
+            /** Tov */
+            tov: number;
+            /** Pf */
+            pf: number;
+            /** Plus Minus */
+            plus_minus: number;
+        };
+        /** BoxTotals */
+        BoxTotals: {
+            /** Pts */
+            pts: number;
+            /** Fgm */
+            fgm: number;
+            /** Fga */
+            fga: number;
+            /** Tpm */
+            tpm: number;
+            /** Tpa */
+            tpa: number;
+            /** Ftm */
+            ftm: number;
+            /** Fta */
+            fta: number;
+            /** Oreb */
+            oreb: number;
+            /** Dreb */
+            dreb: number;
+            /** Ast */
+            ast: number;
+            /** Stl */
+            stl: number;
+            /** Blk */
+            blk: number;
+            /** Tov */
+            tov: number;
+            /** Pf */
+            pf: number;
+        };
         /** GameDetail */
         GameDetail: {
             game: components["schemas"]["GameSummary"];
@@ -177,6 +247,11 @@ export interface components {
             /** Killshots */
             killshots: components["schemas"]["Killshot"][];
             live?: components["schemas"]["Live"] | null;
+            /**
+             * Box
+             * @default []
+             */
+            box: components["schemas"]["TeamBox"][];
         };
         /** GameLineups */
         GameLineups: {
@@ -475,6 +550,13 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** TeamBox */
+        TeamBox: {
+            team: components["schemas"]["Team"];
+            /** Players */
+            players: components["schemas"]["BoxLine"][];
+            totals: components["schemas"]["BoxTotals"];
         };
         /** ValidationError */
         ValidationError: {

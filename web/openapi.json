@@ -317,6 +317,177 @@
  },
  "components": {
   "schemas": {
+   "BoxLine": {
+    "properties": {
+     "player": {
+      "$ref": "#/components/schemas/Player"
+     },
+     "minutes": {
+      "type": "number",
+      "title": "Minutes"
+     },
+     "pts": {
+      "type": "integer",
+      "title": "Pts"
+     },
+     "fgm": {
+      "type": "integer",
+      "title": "Fgm"
+     },
+     "fga": {
+      "type": "integer",
+      "title": "Fga"
+     },
+     "tpm": {
+      "type": "integer",
+      "title": "Tpm"
+     },
+     "tpa": {
+      "type": "integer",
+      "title": "Tpa"
+     },
+     "ftm": {
+      "type": "integer",
+      "title": "Ftm"
+     },
+     "fta": {
+      "type": "integer",
+      "title": "Fta"
+     },
+     "oreb": {
+      "type": "integer",
+      "title": "Oreb"
+     },
+     "dreb": {
+      "type": "integer",
+      "title": "Dreb"
+     },
+     "ast": {
+      "type": "integer",
+      "title": "Ast"
+     },
+     "stl": {
+      "type": "integer",
+      "title": "Stl"
+     },
+     "blk": {
+      "type": "integer",
+      "title": "Blk"
+     },
+     "tov": {
+      "type": "integer",
+      "title": "Tov"
+     },
+     "pf": {
+      "type": "integer",
+      "title": "Pf"
+     },
+     "plus_minus": {
+      "type": "integer",
+      "title": "Plus Minus"
+     }
+    },
+    "type": "object",
+    "required": [
+     "player",
+     "minutes",
+     "pts",
+     "fgm",
+     "fga",
+     "tpm",
+     "tpa",
+     "ftm",
+     "fta",
+     "oreb",
+     "dreb",
+     "ast",
+     "stl",
+     "blk",
+     "tov",
+     "pf",
+     "plus_minus"
+    ],
+    "title": "BoxLine",
+    "description": "One player's game. Shooting is made and attempted; rebounds are offensive and defensive."
+   },
+   "BoxTotals": {
+    "properties": {
+     "pts": {
+      "type": "integer",
+      "title": "Pts"
+     },
+     "fgm": {
+      "type": "integer",
+      "title": "Fgm"
+     },
+     "fga": {
+      "type": "integer",
+      "title": "Fga"
+     },
+     "tpm": {
+      "type": "integer",
+      "title": "Tpm"
+     },
+     "tpa": {
+      "type": "integer",
+      "title": "Tpa"
+     },
+     "ftm": {
+      "type": "integer",
+      "title": "Ftm"
+     },
+     "fta": {
+      "type": "integer",
+      "title": "Fta"
+     },
+     "oreb": {
+      "type": "integer",
+      "title": "Oreb"
+     },
+     "dreb": {
+      "type": "integer",
+      "title": "Dreb"
+     },
+     "ast": {
+      "type": "integer",
+      "title": "Ast"
+     },
+     "stl": {
+      "type": "integer",
+      "title": "Stl"
+     },
+     "blk": {
+      "type": "integer",
+      "title": "Blk"
+     },
+     "tov": {
+      "type": "integer",
+      "title": "Tov"
+     },
+     "pf": {
+      "type": "integer",
+      "title": "Pf"
+     }
+    },
+    "type": "object",
+    "required": [
+     "pts",
+     "fgm",
+     "fga",
+     "tpm",
+     "tpa",
+     "ftm",
+     "fta",
+     "oreb",
+     "dreb",
+     "ast",
+     "stl",
+     "blk",
+     "tov",
+     "pf"
+    ],
+    "title": "BoxTotals"
+   },
    "GameDetail": {
     "properties": {
      "game": {
@@ -352,6 +523,14 @@
         "type": "null"
        }
       ]
+     },
+     "box": {
+      "items": {
+       "$ref": "#/components/schemas/TeamBox"
+      },
+      "type": "array",
+      "title": "Box",
+      "default": []
      }
     },
     "type": "object",
@@ -1314,6 +1493,30 @@
      "name"
     ],
     "title": "Team"
+   },
+   "TeamBox": {
+    "properties": {
+     "team": {
+      "$ref": "#/components/schemas/Team"
+     },
+     "players": {
+      "items": {
+       "$ref": "#/components/schemas/BoxLine"
+      },
+      "type": "array",
+      "title": "Players"
+     },
+     "totals": {
+      "$ref": "#/components/schemas/BoxTotals"
+     }
+    },
+    "type": "object",
+    "required": [
+     "team",
+     "players",
+     "totals"
+    ],
+    "title": "TeamBox"
    },
    "ValidationError": {
     "properties": {

@@ -153,12 +153,24 @@ def run_app(host: str, open_browser: bool) -> None:
         sys.exit(1)  # so a server (Railway) restarts it
 
 
+def backfill() -> None:
+    """Fill in anything new the current code derives from games already stored
+    (today: box scores), from their saved raw data. Usually does nothing."""
+    from . import db
+    from .reprocess import backfill_box_scores
+    with db.connect(os.environ["DATABASE_URL"]) as conn:
+        n = backfill_box_scores(conn)
+    if n:
+        print(f"Added box scores to {n} stored games.", flush=True)
+
+
 def start(args: list[str]) -> None:
     """Migrate, build the site if needed, load history the first time, then run the site and worker."""
     require("DATABASE_URL", "CBBD_API_KEY")
     from . import migrate
 
     migrate.main()
+    backfill()
     build_site_if_needed()
     first_load()
     run_app("127.0.0.1", open_browser="--no-open" not in args)
@@ -172,6 +184,7 @@ def serve(args: list[str]) -> None:
     from . import migrate
 
     migrate.main()
+    backfill()
     first_load()
     run_app("0.0.0.0", open_browser=False)
 

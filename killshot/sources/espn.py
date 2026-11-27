@@ -62,6 +62,10 @@ def play_kind(p: dict) -> str:
         return P.SUB
     if "Foul" in kind:
         return P.FOUL
+    if kind == "Steal":
+        return P.STEAL
+    if kind == "Block Shot":
+        return P.BLOCK
     return P.OTHER
 
 
@@ -83,7 +87,9 @@ def to_play(p: dict, home_wp: dict[str, float]) -> P.Play:
         made=bool(p.get("scoringPlay")),
         three=p.get("pointsAttempted") == 3,
         points=int(p.get("scoreValue") or 0) if p.get("scoringPlay") else 0,
+        # ESPN lists the shooter first and the assister second
         player_id=participants[0]["athlete"]["id"] if participants else None,
+        assist_id=participants[1]["athlete"]["id"] if len(participants) > 1 and "assist" in text else None,
         sub=sub,
         home_pts=p["homeScore"],
         away_pts=p["awayScore"],
