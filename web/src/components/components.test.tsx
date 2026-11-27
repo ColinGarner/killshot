@@ -80,7 +80,7 @@ const liveGame = (state: "in" | "post", updatedAt = new Date().toISOString()): G
   game: { id: "1", start_at: "2026-11-19T00:30:00Z", time_tbd: false, state, status: "12:41 - 2nd Half", venue: "neutral",
     opponent: { id: "2", name: "West Virginia" }, pts: 54, opp_pts: 48, result: state === "post" ? "W" : null,
     has_plays: false, live: true },
-  min_poss: 3, lineups: { best: [], worst: [] }, killshots: [],
+  min_poss: 3, lineups: { best: [], worst: [] }, killshots: [], box: [],
   win_prob: [{ t: 0, clock: "", win_prob: 50, pts: 0, opp_pts: 0 }, { t: 5, clock: "", win_prob: 60, pts: 40, opp_pts: 48 }, { t: 10, clock: "", win_prob: 74.6, pts: 54, opp_pts: 48 }],
   live: { updated_at: updatedAt, clock: "2nd 12:41", on_floor: lineup.players },
 });

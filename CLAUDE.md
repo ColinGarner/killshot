@@ -57,7 +57,7 @@ Tool versions: Node 26 (`.tool-versions` for asdf, `web/.nvmrc`), Python 3.11+, 
   ESPN data is never stored as history; CBBD's record replaces it after the final.
 - **Code path:** `sources/cbbd.py` and `sources/espn.py` translate provider data into our
   `Play` format (`plays.py`); nothing else knows provider field names. `stints.py`,
-  `events.py`, `rollup.py`, `box.py` do the basketball math. `detail.py` builds a game
+  `events.py`, `rollup.py`, `box.py`, `boxscore.py` do the basketball math. `detail.py` builds a game
   page for both finished and live games. `live.py` builds the live page from ESPN.
 - **Worker** (`worker.py`): schedule sync every 10 min around games / 6 h otherwise;
   fetches CBBD plays after the final with retries (5/10/20/40/60 min); from 10 min before
@@ -68,7 +68,7 @@ Tool versions: Node 26 (`.tool-versions` for asdf, `web/.nvmrc`), Python 3.11+, 
 - **Site** (`web/`): React 19, React Router, TanStack Query, Recharts, Tailwind 4, Vite.
   Game page and live score bar refresh every 30 s while live or around tip time.
 - **Database:** Postgres, plain SQL in `db.py`, numbered migrations in `migrations/`
-  (`004_...` next is `005_...`; a test enforces no gaps). Stored home/away-neutral
+  (the next one is `008_...`; a test enforces no gaps). Stored home/away-neutral
   and team-agnostic; only Kansas (CBBD team id `131`) is tracked.
 - **Deploy:** Railway, one service from the `Dockerfile` running `killshot serve`
   (site + worker), plus Railway Postgres. Auto-deploys on push to `main`; health check

@@ -6,6 +6,8 @@ on nothing depends on where the data came from.
 from dataclasses import dataclass, field
 
 from . import events
+from .boxscore import Line, box_score
+from . import plays as P
 from .plays import Play
 from .stints import Stint, build_stints
 
@@ -54,6 +56,7 @@ class Game:
     stints: dict[str, list[Stint]] = field(default_factory=dict)  # by team id
     win_prob: list[events.WinProbPoint] = field(default_factory=list)
     runs: list[events.Run] = field(default_factory=list)
+    box: dict[str, list[Line]] = field(default_factory=dict)  # by team id, see boxscore.py
     lineups_filled: int = 0  # plays whose on-floor list we filled in from substitutions
 
     def team(self, team_id: str) -> Team:
@@ -69,6 +72,11 @@ class Game:
             self.stints[team.id] = build_stints(plays, team.id, team.is_home, live=live)
         self.win_prob = events.win_probability(plays)
         self.runs = events.killshots(plays)
+        for team in (self.home, self.away):
+            # A team's players: everyone the provider lists for it, plus anyone who made a play for it.
+            roster = {pid for pid, p in self.players.items() if p.team_id == team.id}
+            roster |= {p.player_id for p in plays if p.team_id == team.id and p.player_id and p.kind != P.SUB}
+            self.box[team.id] = box_score(plays, self.stints[team.id], roster)
 
     def quality(self, team_id: str) -> dict:
         """Does the reconstruction hold together for one team?

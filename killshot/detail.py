@@ -6,6 +6,7 @@ the same way. Everything is turned around to one team's side.
 """
 from . import rollup
 from .clock import label
+from .boxscore import Line, totals
 from .events import Run, WinProbPoint
 from .stints import Stint
 
@@ -53,11 +54,20 @@ def killshot(run: Run, team_id: str, is_home: bool) -> dict:
             "score_before": list(before), "score_after": list(after)}
 
 
+def team_box(team: dict, lines: list[Line], people: dict[str, dict]) -> dict:
+    """One team's box score: {team, players, totals}."""
+    players = [{**{k: v for k, v in l.as_dict().items() if k != "player_id"}, "player": player(people, l.player_id)}
+               for l in lines]
+    return {"team": team, "players": players, "totals": totals(lines)}
+
+
 def build(summary: dict, team_id: str, is_home: bool, stints: list[Stint], win_prob: list[WinProbPoint],
-          runs: list[Run], people: dict[str, dict]) -> dict:
-    """The whole game page for one team. `summary` is the game's row as the games list shows it."""
+          runs: list[Run], people: dict[str, dict], box: list[dict] | None = None) -> dict:
+    """The whole game page for one team. `summary` is the game's row as the games list shows it;
+    `box` is the two teams' box scores (from team_box), this team first."""
     best, worst = rollup.best_and_worst(rollup.lineups(stints), min_poss=GAME_MIN_POSS)
     return {"game": summary, "min_poss": GAME_MIN_POSS,
             "lineups": {"best": lineup_rows(best, people), "worst": lineup_rows(worst, people)},
             "win_prob": [w.for_team(is_home) for w in win_prob],
-            "killshots": [killshot(r, team_id, is_home) for r in runs]}
+            "killshots": [killshot(r, team_id, is_home) for r in runs],
+            "box": box or []}

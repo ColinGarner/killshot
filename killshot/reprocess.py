@@ -12,6 +12,14 @@ from . import db
 from .sources import cbbd
 
 
+def backfill_box_scores(conn) -> int:
+    """Rebuild only the games saved before box scores existed (no API calls). Returns how many."""
+    rows = db.games_missing_box_scores(conn)
+    for game_id, raw in rows:
+        db.save_game(conn, cbbd.to_game(raw), raw)
+    return len(rows)
+
+
 def main() -> None:
     with db.connect(os.environ["DATABASE_URL"]) as conn:
         for name in db.migrate(conn):

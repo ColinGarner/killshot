@@ -16,6 +16,7 @@ Built for any team; ships with Kansas.
 | `killshot/box.py` | Counting stats, possessions, ratings |
 | `killshot/rollup.py` | Adds stints up into lineups, on/off splits, team totals |
 | `killshot/events.py` | Win probability and killshots |
+| `killshot/boxscore.py` | Each player's box score, from the plays (live and finished games alike) |
 | `killshot/game.py` | One game → stints, win probability, killshots, data checks |
 | `killshot/detail.py` | Puts a game page together (lineups, win probability, killshots), for finished and live games alike |
 | `killshot/live.py` | Builds the live game page from ESPN while a game is on |

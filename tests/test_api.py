@@ -210,3 +210,18 @@ def test_subscribing_and_unsubscribing(api, conn):
     r = api.post("/api/push/unsubscribe", json={"endpoint": body["endpoint"]})
     assert r.status_code == 200 and r.json() == {"ok": True}
     assert db.push_subscriptions(conn) == []
+
+
+def test_a_game_has_both_teams_box_scores_kansas_first(api):
+    box = api.get(f"/api/teams/{KANSAS}/games/{KENTUCKY}").json()["box"]
+    assert [b["team"]["name"] for b in box] == ["Kansas", "Kentucky"]
+    assert (box[0]["totals"]["pts"], box[1]["totals"]["pts"]) == (89, 69)
+    top = box[0]["players"][0]
+    assert top["player"]["name"] and top["minutes"] >= box[0]["players"][-1]["minutes"]
+
+
+def test_a_live_game_has_a_live_box_score(api, conn):
+    go_live(conn, 250)
+    box = api.get(f"/api/teams/{KANSAS}/games/{KENTUCKY}").json()["box"]
+    assert [b["team"]["name"] for b in box] == ["Kansas", "Kentucky"]
+    assert box[0]["totals"]["pts"] < 89  # the score so far

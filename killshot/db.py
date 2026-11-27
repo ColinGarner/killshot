@@ -10,12 +10,16 @@ from pathlib import Path
 import psycopg
 import psycopg.sql
 
+from dataclasses import fields
+
 from .box import Box
+from .boxscore import Line
 from .game import Game
 from .stints import Stint
 
 MIGRATIONS = Path(__file__).resolve().parent.parent / "migrations"
 BOX_FIELDS = ["pts", "fga", "fgm", "tpa", "tpm", "fta", "ftm", "oreb", "dreb", "to"]
+BOX_SCORE_FIELDS = [f.name for f in fields(Line)]  # player_games columns, in boxscore.Line order
 
 
 def connect(url: str) -> psycopg.Connection:
@@ -138,6 +142,14 @@ def save_game(conn: psycopg.Connection, game: Game, raw: dict | None = None) -> 
                    ON CONFLICT (game_id, t) DO UPDATE SET home_wp = excluded.home_wp,
                        home_pts = excluded.home_pts, away_pts = excluded.away_pts""",
                 (game.id, w.t, w.home_wp, w.home_pts, w.away_pts))
+
+        for team_id, lines in game.box.items():
+            for line in lines:
+                row = line.as_dict()
+                conn.execute(
+                    f"INSERT INTO player_games (game_id, team_id, {', '.join(BOX_SCORE_FIELDS)}) "
+                    f"VALUES (%s, %s, {', '.join(['%s'] * len(BOX_SCORE_FIELDS))})",
+                    [game.id, team_id] + [row[f] for f in BOX_SCORE_FIELDS])
 
         for r in game.runs:
             conn.execute(
@@ -417,3 +429,24 @@ def player_stats_is_stale(conn: psycopg.Connection, team_id: str, season: int, m
            AND updated_at >= now() - make_interval(hours => %s) LIMIT 1""",
         (team_id, season, max_age_hours)).fetchone()
     return row is None
+
+
+# --- box scores ------------------------------------------------------------------
+
+def box_for_game(conn: psycopg.Connection, game_id: str) -> dict[str, list[Line]]:
+    """Team id -> its players' lines for one game, most minutes first."""
+    cur = conn.execute(f"SELECT team_id, {', '.join(BOX_SCORE_FIELDS)} FROM player_games "
+                       "WHERE game_id = %s ORDER BY minutes DESC, pts DESC", (game_id,))
+    out: dict[str, list[Line]] = {}
+    for team_id, *values in cur.fetchall():
+        out.setdefault(team_id, []).append(Line(*values))
+    return out
+
+
+def games_missing_box_scores(conn: psycopg.Connection) -> list[tuple[str, dict]]:
+    """Games saved with their plays before box scores existed: (id, raw) to rebuild."""
+    return conn.execute(
+        """SELECT g.id, g.raw FROM games g
+           WHERE g.plays_saved_at IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM player_games p WHERE p.game_id = g.id)
+           ORDER BY g.start_at""").fetchall()
