@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import type { Player } from "../api/client";
 import { useGame, useSeason, useTeam } from "../api/queries";
+import { BoxScoreTable } from "../components/BoxScoreTable";
 import { Killshots } from "../components/Killshots";
 import { LineupTable } from "../components/LineupTable";
 import { LiveBar, OnFloor } from "../components/LiveBar";
 import { PlayerModal } from "../components/PlayerModal";
+import { Segmented } from "../components/Segmented";
 import { Failed, Loading, SectionTitle } from "../components/Status";
 import { WinProbChart } from "../components/WinProbChart";
 import { currentSeason, gameDate, venuePrefix } from "../lib/format";
@@ -17,6 +19,18 @@ export function GamePage() {
   const team = useTeam();
   const game = useGame(team.data?.id, gameId);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  // Lineups or box score, and whose box score. Own state so the switches answer instantly;
+  // the URL follows, so a box score can be shared (?view=box&side=opp).
+  const [params, setParams] = useSearchParams();
+  const [view, setView] = useState<"lineups" | "box">(params.get("view") === "box" ? "box" : "lineups");
+  const [side, setSide] = useState<"team" | "opp">(params.get("side") === "opp" ? "opp" : "team");
+  const choose = (next: { view?: "lineups" | "box"; side?: "team" | "opp" }) => {
+    const v = next.view ?? view;
+    const s = next.side ?? side;
+    setView(v);
+    setSide(s);
+    setParams(v === "box" ? (s === "opp" ? { view: v, side: s } : { view: v }) : {}, { replace: true });
+  };
   // The season a player's stats come from is the game's own season, not necessarily the
   // current one -- an old game should still show that season's numbers, not this year's.
   const season = game.data ? currentSeason(new Date(game.data.game.start_at)) : undefined;
@@ -27,11 +41,16 @@ export function GamePage() {
   if (game.error) return <Failed error={game.error} />;
   if (!game.data) return <Loading what="the game" />;
 
-  const { game: g, win_prob, killshots, lineups, min_poss, live } = game.data;
+  const { game: g, win_prob, killshots, lineups, min_poss, live, box } = game.data;
+  const shownBox = box[side === "team" ? 0 : 1];
   return (
     <article className="space-y-8">
       {selectedPlayer && (
-        <PlayerModal player={selectedPlayer} advanced={advanced[selectedPlayer.id]} onClose={() => setSelectedPlayer(null)} />
+        <PlayerModal
+          player={selectedPlayer}
+          advanced={advanced[selectedPlayer.id]}
+          onClose={() => setSelectedPlayer(null)}
+        />
       )}
       <LiveBar detail={game.data} team={team.data?.name ?? ""} />
       <div>
@@ -43,7 +62,9 @@ export function GamePage() {
         </h2>
         <p className="mt-1 flex items-baseline gap-3 tabular-nums">
           {!live && (
-            <span className={`font-display text-3xl font-bold ${g.result === "W" ? "text-ku-blue dark:text-ku-sky" : "text-ku-crimson dark:text-ku-rose"}`}>
+            <span
+              className={`font-display text-3xl font-bold ${g.result === "W" ? "text-ku-blue dark:text-ku-sky" : "text-ku-crimson dark:text-ku-rose"}`}
+            >
               {g.result} {g.pts}-{g.opp_pts}
             </span>
           )}
@@ -73,23 +94,69 @@ export function GamePage() {
         <Killshots killshots={killshots} opponent={g.opponent.name} />
       </section>
 
-      <section>
-        <SectionTitle>Most efficient lineups</SectionTitle>
-        <LineupTable lineups={lineups.best} empty={`No lineup played ${min_poss}+ possessions.`} onSelectPlayer={setSelectedPlayer} />
-      </section>
-
-      <section>
-        <SectionTitle>Least efficient lineups</SectionTitle>
-        <LineupTable
-          lineups={lineups.worst}
-          empty={`Not enough lineups with ${min_poss}+ possessions.`}
-          onSelectPlayer={setSelectedPlayer}
+      <div className="flex justify-center">
+        <Segmented
+          label="Lineups or box score"
+          value={view}
+          onChange={(v) => choose({ view: v })}
+          options={[
+            { value: "lineups", label: "Lineups" },
+            { value: "box", label: "Box score" },
+          ]}
         />
-        <p className="mt-3 text-xs text-slate-500">
-          Lineups with {min_poss}+ possessions together. Net is points per 100 possessions scored minus allowed; +/− is the
-          raw score margin while that five played. Small samples swing hard.
-        </p>
-      </section>
+      </div>
+
+      {view === "box" ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <SectionTitle>Box score</SectionTitle>
+            {box.length === 2 && (
+              <Segmented
+                label="Which team"
+                value={side}
+                onChange={(s) => choose({ side: s })}
+                options={[
+                  { value: "team", label: box[0].team.name },
+                  { value: "opp", label: box[1].team.name },
+                ]}
+              />
+            )}
+          </div>
+          {shownBox ? (
+            <BoxScoreTable box={shownBox} onSelectPlayer={side === "team" ? setSelectedPlayer : undefined} />
+          ) : (
+            <p className="text-sm text-slate-500">The box score shows up once the game starts.</p>
+          )}
+          <p className="mt-3 text-xs text-slate-500">
+            Built from the play-by-play{live ? ", live" : ""}. +/− is the score margin while the player was on the
+            floor.
+          </p>
+        </section>
+      ) : (
+        <>
+          <section>
+            <SectionTitle>Most efficient lineups</SectionTitle>
+            <LineupTable
+              lineups={lineups.best}
+              empty={`No lineup played ${min_poss}+ possessions.`}
+              onSelectPlayer={setSelectedPlayer}
+            />
+          </section>
+
+          <section>
+            <SectionTitle>Least efficient lineups</SectionTitle>
+            <LineupTable
+              lineups={lineups.worst}
+              empty={`Not enough lineups with ${min_poss}+ possessions.`}
+              onSelectPlayer={setSelectedPlayer}
+            />
+            <p className="mt-3 text-xs text-slate-500">
+              Lineups with {min_poss}+ possessions together. Net is points per 100 possessions scored minus allowed; +/−
+              is the raw score margin while that five played. Small samples swing hard.
+            </p>
+          </section>
+        </>
+      )}
     </article>
   );
 }
